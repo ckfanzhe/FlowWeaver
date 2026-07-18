@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "agnobuilder.workflow",
+  "exportedAt": "2026-08-12T00:00:00+00:00",
+  "workflow": {
+    "name": "human_input_text",
+    "description": "human_input (text question). Pauses on ask, resumes after user provides text.",
+    "nodes": [
+      {
+        "id": "ask",
+        "type": "human_input",
+        "position": {"x": 100, "y": 0},
+        "data": {
+          "label": "AskName",
+          "config": {
+            "prompt": "What is your name?",
+            "inputType": "text"
+          }
+        }
+      }
+    ],
+    "edges": []
+  }
+}

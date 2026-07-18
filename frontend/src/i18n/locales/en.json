@@ -1,0 +1,513 @@
+{
+  "common": {
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "✓ Copied",
+    "download": "⬇ Download",
+    "untitled": "Untitled Workflow",
+    "loading": "Loading…",
+    "confirm": "Confirm",
+    "back": "Back"
+  },
+  "toolbar": {
+    "new": "+ New",
+    "load": "Load ▾",
+    "export": "⬇ Export",
+    "exporting": "Generating…",
+    "settings": "⚙ Settings",
+    "moreOptions": "More actions",
+    "newConfirm": "Discard unsaved changes and start a new workflow?",
+    "newPrompt": "New workflow name",
+    "defaultName": "Untitled",
+    "menu": {
+      "new": "New workflow",
+      "newHint": "Start a new workflow (clears current canvas)",
+      "load": "Load workflow",
+      "export": "Export Python",
+      "exportHint": "Preview and download as a standalone .py file",
+      "exportJson": "Export JSON",
+      "exportJsonHint": "Download as a versioned .json file (share with others)",
+      "copyJson": "Copy JSON",
+      "copyJsonHint": "Copy the workflow as JSON to the clipboard",
+      "importJson": "Import JSON…",
+      "importJsonHint": "Import a workflow from a .json file",
+      "noWorkflows": "No saved workflows yet",
+      "switchUser": "Switch user",
+      "switchUserHint": "Sign out and pick a different email (resets this browser)"
+    },
+    "share": {
+      "copiedTitle": "Copied to clipboard",
+      "copiedBody": "Workflow JSON is on your clipboard — paste it anywhere.",
+      "copyFailed": "Copy failed: {error}",
+      "importTitle": "Import workflow from JSON?",
+      "importFromFile": "Pick a file…",
+      "importReplaceHint": "This will create a NEW workflow on the server. Your current canvas is preserved until you save it.",
+      "importUnparsedTitle": "Couldn't read JSON",
+      "importUnparsedBody": "The file is not valid JSON: {error}",
+      "importRejectedTitle": "Backend rejected the file",
+      "importRejectedBody": "{error}",
+      "importWrongKindBody": "\"${file}\" doesn't look like an agno-builder workflow. Expected `kind: \"agnobuilder.workflow\"`.",
+      "importTooBigBody": "File is too big ({size}); max is {max}.",
+      "importOk": "Imported \"{name}\" — opening it now…",
+      "dropTitle": "Drop to import",
+      "dropHint": "Release to add this workflow to your canvas"
+    },
+    "tooltips": {
+      "settings": "Settings (LLM presets, MCP servers)",
+      "new": "Start a new workflow (clears current canvas)",
+      "export": "Preview and download this workflow as a standalone Python file"
+    }
+  },
+  "palette": {
+    "title": "Nodes",
+    "hint": "Drag onto canvas. Connect handles left-to-right. Click a node to edit.",
+    "expand": "Expand node palette",
+    "collapse": "Collapse node palette",
+    "basicNodes": "Basic Nodes",
+    "tools": "Tools"
+  },
+  "panel": {
+    "empty": "Select a node to edit its properties.",
+    "label": "Label",
+    "delete": "Delete node",
+    "deleteHint": "Delete / Backspace",
+    "close": "Close property panel",
+    "noConfig": "No additional configuration.",
+    "fields": {
+      "model": "Model",
+      "instructions": "Instructions",
+      "condition": "Condition",
+      "prompt": "Prompt",
+      "inputType": "Input type",
+      "serverId": "Server",
+      "toolNamePrefix": "Tool name prefix",
+      "toolName": "Tool name",
+      "toolDescription": "Tool description",
+      "baseUrl": "Base URL",
+      "method": "Method",
+      "path": "Path",
+      "headers": "Headers (JSON)",
+      "queryParams": "Query params (JSON)",
+      "authToken": "Auth token (optional)",
+      "bodySchema": "Request body schema (JSON)",
+      "functions": "Functions",
+      "addFunction": "+ Add function",
+      "functionName": "Name",
+      "functionDescription": "Description",
+      "functionParams": "Parameters (JSON schema)",
+      "functionCode": "Code (Python)",
+      "branches": "Branches",
+      "maxIterations": "Max iterations",
+      "endCondition": "End condition",
+      "bodyTarget": "Body (step to repeat)",
+      "source": "Source",
+      "preset": "Preset"
+    },
+    "agent": {
+      "using": "Using",
+      "model": "Model",
+      "modelDefault": "System default",
+      "keySet": "key set",
+      "keyFallback": "using .env.llm fallback",
+      "noDefaultTitle": "No default model configured",
+      "noDefaultNoPresets": "No LLM presets are configured yet. Open Settings and add one — every agent in this workflow will use it.",
+      "noDefaultWithPresets": "You have LLM presets saved, but none is marked as the default. Pick one above to override for this agent, or open Settings → LLM Models and mark one as default.",
+      "openSettings": "Open Settings",
+      "instructionsPlaceholder": "You are a helpful assistant that…",
+      "advancedLabel": "Advanced",
+      "advancedHint": "Low-frequency knobs — reasoning, retries, parser, hooks. Leave empty for the v1 default behavior.",
+      "systemMessageLabel": "System message (developer-tier)",
+      "systemMessagePlaceholder": "You are a careful assistant. Always…",
+      "reasoningLabel": "Enable chain-of-thought reasoning",
+      "reasoningModelLabel": "Reasoning model (optional)",
+      "subModelNone": "— none —",
+      "retriesLabel": "Retries on failure",
+      "delayBetweenRetriesLabel": "Delay (seconds)",
+      "toolCallLimitLabel": "Tool-call limit per turn",
+      "toolCallLimitPlaceholder": "unlimited",
+      "addDatetimeToContextLabel": "Add current date to the prompt",
+      "parserModelLabel": "Parser model (optional)",
+      "parserModelPromptLabel": "Parser prompt",
+      "parserModelPromptPlaceholder": "Reformat the LLM output as JSON…",
+      "preHooksLabel": "Pre-hooks (`tools` node IDs)",
+      "postHooksLabel": "Post-hooks (`tools` node IDs)",
+      "hooksPlaceholder": "No `tools` nodes available — add one to wire hooks."
+    },
+    "branch": {
+      "hint": "Switch mode picks one of N branches; if-else mode runs `then` when the evaluator is truthy and `else` otherwise. Deterministic — no LLM call.",
+      "modeLabel": "Branch mode",
+      "modeSwitch": "Switch (N-ary routing)",
+      "modeIfElse": "If / Else (binary condition)",
+      "modeHint": {
+        "switch": "Pick the best branch from the upstream step's input via a selector (function / CEL / HITL).",
+        "if-else": "Run the connected `then` target only when the evaluator returns truthy against the upstream step's input."
+      },
+      "selectorModeLabel": "Selector mode",
+      "selectorModeHint": {
+        "function": "Run a Python expression against the upstream step. Return the chosen branch step object (e.g. `na_faq_step`). No LLM call.",
+        "cel": "Pass a CEL expression string to agno. Must return a branch label (e.g. `\"na_faq_step\"`). Requires `cel-python` at runtime.",
+        "hitl": "Pause execution and ask the user to pick the branch. No LLM call — agno presents the choices to the user."
+      },
+      "evaluatorModeLabel": "Evaluator mode",
+      "evaluatorModeHint": {
+        "function": "Write a Python expression evaluated against step_input. 5 locals are in scope: previous_step_content, previous_step_outputs, input, additional_data, session_state.",
+        "cel": "Write a CEL (Common Expression Language) string passed verbatim to agno. Returns a boolean. Requires cel-python.",
+        "literal": "Pick a constant True or False value."
+      },
+      "modeFunction": "Python expression",
+      "modeCel": "CEL expression",
+      "modeLiteral": "Literal (True / False)",
+      "modeHitl": "Human-in-the-loop",
+      "expressionLabel": "Expression",
+      "expressionPlaceholder": "na_faq_step if 'billing' in previous_step_content else na_support_step",
+      "expressionHint": "5 locals in scope: previous_step_content, previous_step_outputs, input, additional_data, session_state.",
+      "celLabel": "CEL expression",
+      "celPlaceholder": "input.contains(\"billing\")",
+      "celHint": "Returns a branch label (switch) or boolean (if-else). CEL docs: https://github.com/google/cel-spec",
+      "hitlPromptLabel": "User prompt",
+      "hitlPromptPlaceholder": "Which department should handle this?",
+      "hitlPromptHint": "Shown to the user when agno pauses for branch selection. Empty = agno's default prompt listing the choices.",
+      "literalLabel": "Value",
+      "thenTarget": "Then branch",
+      "thenHint": "The first outgoing edge from this node.",
+      "elseTarget": "Else branch",
+      "elseNone": "— none —",
+      "elseHint": "Optional. Runs when the condition is false.",
+      "hitlLabel": "Human-in-the-loop",
+      "requiresConfirmationLabel": "Ask user to confirm the then-branch before evaluating",
+      "confirmationMessageLabel": "Confirmation prompt",
+      "confirmationMessagePlaceholder": "Continue with the then-branch?"
+    },
+    "parallel": {
+      "hint": "Branches are wired by connecting edges from this node to the targets."
+    },
+    "flow": {
+      "modeLabel": "Execution mode",
+      "mode": {
+        "parallel": "Parallel",
+        "sequential": "Sequential"
+      },
+      "hint": "Branches are wired by connecting edges from this node to the targets.",
+      "hitlLabel": "Human-in-the-loop checkpoint",
+      "hitlHint": "Pause the whole block and ask for confirmation BEFORE the first step runs. One prompt — not per-step.",
+      "hitlHintParallel": "Ignored in `parallel` mode — switch to `sequential` to enable the block-level confirmation gate."
+    },
+    "steps": {
+      "hint": "Run branches in sequence — edge order is the execution order. Connect edges from this node to the steps you want to chain.",
+      "hitlLabel": "Human-in-the-loop checkpoint",
+      "hitlHint": "Pause the whole block and ask for confirmation BEFORE the first step runs. One prompt — not per-step."
+    },
+    "loop": {
+      "hint": "Repeat the chosen step up to N times. Stops early when the iteration output contains the end-condition substring.",
+      "endConditionPlaceholder": "DONE",
+      "endConditionHint": "Substring matched against the iteration's output. Leave empty to always run max iterations.",
+      "forwardLabel": "Feed each iteration's output into the next iteration's input",
+      "bodyTarget": "Loop body",
+      "bodyNone": "— pick a step —",
+      "bodyHint": "The step that runs each iteration. Edges from the loop node are what runs AFTER the loop.",
+      "hitlLabel": "Human-in-the-loop checkpoints",
+      "hitlHint": "Pause the loop and ask for confirmation before running. Two independent checkpoints: once at the start, and once per iteration.",
+      "requiresIterationReviewLabel": "Ask before each iteration",
+      "iterationReviewMessageLabel": "Per-iteration prompt",
+      "iterationReviewMessagePlaceholder": "About to run iteration {n}. Continue?"
+    },
+    "ask": {
+      "promptPlaceholder": "What would you like to know?",
+      "choicesPlaceholder": "Comma-separated choices (used when input type = choice)"
+    },
+    "mcp": {
+      "selectServer": "— Select a server —",
+      "noServers": "No MCP servers configured — open ⚙ Settings to add one.",
+      "prefixHint": "Optional. e.g. \"fs_\" → every tool exposed by this server will be named \"fs_list\", \"fs_read\", …"
+    },
+    "http": {
+      "toolNamePlaceholder": "fetch_user",
+      "toolDescriptionPlaceholder": "Look up a user by id",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "pathPlaceholder": "/users/{user_id}",
+      "headersPlaceholder": "{\"X-Token\": \"abc\"}",
+      "queryParamsPlaceholder": "{\"limit\": \"10\"}",
+      "authTokenPlaceholder": "paste bearer token, or leave empty",
+      "bodySchemaPlaceholder": "{\"type\": \"object\", \"properties\": {...}}"
+    },
+    "tools": {
+      "noFunctions": "No functions yet — click \"+ Add function\" to start."
+    },
+    "tool": {
+      "sourceHttp": "HTTP request",
+      "sourceMcp": "MCP server",
+      "sourceFunction": "Custom functions",
+      "sourceHint": "Pick a source — the form below switches to its fields.",
+      "presetNone": "— none —",
+      "presetHint": "Pick a bundled toolkit preset (wikipedia / tavily_search / duckduckgo / calculator / arxiv_search), or leave as None to use a custom source above.",
+      "presetBadge": "tool preset: {name}"
+    },
+    "toolPreset": {
+      "bundled": "Bundled toolkit — config below controls which methods and constructor kwargs are exposed.",
+      "enabledMethods": "Exposed methods",
+      "noDeclaredMethods": "No methods declared for this preset.",
+      "allExposedHint": "Empty = all methods exposed (default).",
+      "subsetHint": "{count} methods exposed (others hidden from the LLM).",
+      "toolkitOptions": "Constructor options (kwargs)"
+    },
+    "inputType": {
+      "text": "Text",
+      "confirm": "Confirm (yes/no)",
+      "choice": "Choice"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close settings",
+    "tabs": {
+      "llm": "LLM Models",
+      "mcp": "MCP Servers"
+    },
+    "llm": {
+      "hint": "Models saved here are available as a dropdown on Agent nodes.",
+      "add": "+ Add model",
+      "noPresets": "No presets yet. Add one to use a saved model in agent nodes.",
+      "default": "DEFAULT",
+      "setDefault": "Set as default",
+      "currentDefault": "Current default (click ☆ on another row to switch)",
+      "newPreset": "New preset",
+      "editPreset": "Edit preset",
+      "deleteConfirm": "Delete preset \"{name}\"?",
+      "thinkingOn": "Thinking on",
+      "thinkingOnHint": "Extended reasoning is enabled for this preset.",
+      "fields": {
+        "name": "Name",
+        "provider": "Provider",
+        "modelId": "Model id",
+        "apiKey": "API key",
+        "baseUrl": "Base URL (optional)",
+        "thinking": "Thinking mode",
+        "thinkingHint": "Send extended-thinking / reasoning kwargs to the model. Off by default — slow reasoning tasks only."
+      },
+      "placeholders": {
+        "name": "My Claude",
+        "modelId": "claude-sonnet-4-5",
+        "apiKey": "sk-...",
+        "baseUrl": "https://api.example.com",
+        "apiKeyUnchanged": "(unchanged)"
+      }
+    },
+    "mcp": {
+      "hint": "MCP servers are referenced by Agent nodes. Configure once, reuse anywhere.",
+      "add": "+ Add server",
+      "noServers": "No MCP servers yet. Add one to enable MCP tool nodes.",
+      "disabled": "disabled",
+      "newServer": "New MCP server",
+      "editServer": "Edit MCP server",
+      "deleteConfirm": "Delete MCP server \"{name}\"?",
+      "fields": {
+        "name": "Name",
+        "transport": "Transport",
+        "command": "Command",
+        "args": "Args (space-separated)",
+        "url": "URL",
+        "enabled": "Enabled"
+      },
+      "transports": {
+        "stdio": "stdio (local process)",
+        "sse": "sse (remote URL)"
+      },
+      "placeholders": {
+        "command": "npx",
+        "args": "-y @modelcontextprotocol/server-filesystem /tmp",
+        "url": "https://mcp.example.com/sse"
+      }
+    }
+  },
+  "export": {
+    "preview": "Export preview",
+    "generating": "Generating…",
+    "editHint": "Edit freely — only the file you download uses this text."
+  },
+  "chat": {
+    "title": "Chat",
+    "titleRun": "Run Workflow",
+    "titleBuild": "Build Workflow",
+    "empty": "Type a message and press Enter to start.",
+    "emptyRun": "Type a message and press Enter to run the workflow.",
+    "emptyRunHint": "The workflow will start as soon as you send your first message.",
+    "emptyBuild": "Describe the workflow change you want — e.g. \"add a Router that branches on user intent\".",
+    "emptyBuildHint": "The agent will plan the edits, then you can review and apply the diff.",
+    "greeting": "Hi 👋 What can I help you with?",
+    "inputPlaceholder": "Send a message to run the workflow…",
+    "buildPlaceholder": "Describe the workflow change…",
+    "buildPlaceholderEmpty": "Describe the workflow you want to build — e.g. \"an agent that classifies incoming requests and routes urgent ones to a specialist\".",
+    "creatingWorkflow": "Creating empty workflow…",
+    "waitingPlaceholder": "Waiting for the workflow to finish…",
+    "confirmPlaceholder": "Type your answer (or \"yes\"/\"no\" if it was a confirm)…",
+    "clear": "Clear",
+    "copyJson": "Copy",
+    "copyJsonCopied": "Copied",
+    "copyJsonFailed": "Copy failed",
+    "retry": "Stream interrupted, retrying…",
+    "close": "Close ✕",
+    "send": "Send",
+    "keyHintSend": "Enter to send",
+    "stop": "Stop",
+    "keyHintStop": "Esc to stop",
+    "switchToRun": "Run",
+    "switchToRunHint": "Switch to runtime chat to execute this workflow.",
+    "switchToBuild": "Build",
+    "switchToBuildHint": "Back to the workflow-builder chat.",
+    "modelDefault": "Default model",
+    "modelEmpty": "Configure LLM",
+    "modelEmptyHint": "No LLM preset configured. Open Settings → LLM Models to add one.",
+    "modelLabel": "Model",
+    "yes": "✓ Yes",
+    "no": "✗ No",
+    "waiting": "Waiting…",
+    "waitingOn": "Waiting on \"{label}\"…",
+    "kind": {
+      "asking": "Asking you:",
+      "confirm": "Confirm:",
+      "completed": "✓ completed"
+    },
+    "showTrace": "Trace",
+    "hideTrace": "Hide trace",
+    "resize": "Resize"
+  },
+  "node": {
+    "status": {
+      "running": "Running…",
+      "completedMs": "{ms}ms",
+      "tokens": "{count} tok",
+      "errorGeneric": "Error"
+    }
+  },
+  "trace": {
+    "title": "Execution Trace",
+    "running": "running…",
+    "empty": "Run the workflow to see a per-node timeline here.",
+    "close": "Close ✕",
+    "clickToSelect": "Click to select on canvas",
+    "start": "start",
+    "pending": "…",
+    "duration": "{ms}ms",
+    "noTokens": "—",
+    "tokenCount": "{count} tok",
+    "totalNodes": "{count} node(s)",
+    "tokens": "tok {input}↓ {output}↑ ({total})",
+    "status": {
+      "running": "running",
+      "ok": "ok",
+      "error": "error"
+    }
+  },
+  "nodes": {
+    "agent":       { "label": "Agent",     "description": "LLM agent node" },
+    "branch":      { "label": "Branch",    "description": "Switch (N-ary routing) or if-else (binary condition)" },
+    "parallel":    { "label": "Parallel",  "description": "Run branches in parallel" },
+    "flow":        { "label": "Flow",      "description": "Run branches in parallel or sequentially" },
+    "steps":       { "label": "Steps",     "description": "Sequential pipeline of branches" },
+    "loop":        { "label": "Loop",      "description": "Repeat a step up to N times" },
+    "ask": { "label": "Ask",  "description": "Pause and ask user" },
+    "tool":        { "label": "Tool",      "description": "HTTP wrapper, MCP server, custom Python function, or bundled toolkit preset (wikipedia / tavily / duckduckgo / calculator / arxiv)" }
+  },
+  "templates": {
+    "title": "Start from a template",
+    "subtitle": "Pick a starting point. Edit anything once it's loaded.",
+    "footer": "Tip: pick a template to learn how its components fit together.",
+    "startEmpty": "+ Start empty",
+    "discardWarning": "⚠ You have unsaved changes. Loading a template will discard them.",
+    "nodes": "nodes",
+    "edges": "edges",
+    "categories": {
+      "starter": "Starter",
+      "interaction": "Interaction",
+      "branching": "Branching",
+      "loop": "Loops",
+      "tools": "Tools",
+      "complex": "Complex"
+    },
+    "cards": {
+      "tpl-hello-world": {
+        "name": "Hello World",
+        "description": "The simplest possible workflow — input feeds an agent, whose reply flows to the output."
+      },
+      "tpl-ask-the-user": {
+        "name": "Ask the User",
+        "description": "An ask gate pauses the workflow to collect user input, then a final agent answers based on the user's response."
+      },
+      "tpl-conditional-greeting": {
+        "name": "Conditional Greeting",
+        "description": "If-else branch reads the workflow input directly — if the input contains 'urgent' the urgent responder replies, otherwise the casual one."
+      },
+      "tpl-iterative-story": {
+        "name": "Iterative Story Generator",
+        "description": "A writer agent self-iterates up to 3 times — drafts the opening scene on the first run, then self-critiques and revises on each subsequent iteration (stops when the writer outputs 'DONE')."
+      },
+      "tpl-parallel-summary": {
+        "name": "Parallel Research with Synthesis",
+        "description": "Two agents analyze the input from opposing angles in parallel; a sibling synthesizer combines their findings into one balanced answer."
+      }
+    }
+  },
+  "canvas": {
+    "connectionMode": {
+      "unreachable": {
+        "type": "Can't connect — this node type can't be wired in this direction.",
+        "tooMany": "Can't connect — this node already has its maximum allowed connections.",
+        "selfLoop": "Can't connect — a node can't connect to itself.",
+        "duplicate": "Can't connect — these two nodes are already connected.",
+        "incompatible": "Can't connect to this node."
+      }
+    }
+  },
+  "identity": {
+    "chipTooltip": "Click to switch user",
+    "gate": {
+      "title": "Who's working?",
+      "subtitle": "Enter your email to load your workflows. The platform has no login — your email is how the server identifies this browser, and how you can recover your work on another device.",
+      "label": "Email",
+      "placeholder": "you@example.com",
+      "hint": "Tip: use the same email on another device to recover your workflows.",
+      "submit": "Continue"
+    },
+    "menu": {
+      "signedInAs": "Signed in as",
+      "avatar": "Avatar",
+      "language": "Language",
+      "theme": "Theme",
+      "themes": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "settings": "Settings",
+      "settingsHint": "LLM presets, MCP servers",
+      "switchUser": "Switch user"
+    }
+  },
+  "errors": {
+    "untitled": "Workflow name required",
+    "connection": {
+      "selfLoop": "A node cannot connect to itself.",
+      "duplicateEdge": "These two nodes are already connected.",
+      "incompatibleSource": "This node type can't be a starting point of a connection. Wire it through the property panel instead (e.g. via toolsRef).",
+      "incompatibleTarget": "This node type can't be an endpoint of a connection.",
+      "tooManyOutgoing": "This node already has its maximum allowed outgoing connections.",
+      "tooManyIncoming": "This node already has its maximum allowed incoming connections.",
+      "missingOutgoing": "This node requires at least one outgoing connection.",
+      "missingIncoming": "This node requires at least one incoming connection.",
+      "missingInput": "The workflow is missing an Input node.",
+      "noThen": "A Condition node needs at least one outgoing connection (the 'then' branch).",
+      "loopBodyViaEdge": "The loop's body is already set in the property panel — remove this redundant edge."
+    }
+  },
+  "contextMenu": {
+    "addNode": "Add node",
+    "fitView": "Fit view",
+    "delete": "Delete",
+    "duplicate": "Duplicate"
+  }
+}

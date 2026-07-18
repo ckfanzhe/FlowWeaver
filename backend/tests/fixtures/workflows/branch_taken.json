@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "agnobuilder.workflow",
+  "exportedAt": "2026-08-12T00:00:00+00:00",
+  "workflow": {
+    "name": "branch_taken",
+    "description": "agent → branch (contains:urgent) → then-agent. With input 'urgent help', the branch fires and the then-agent runs.",
+    "nodes": [
+      {
+        "id": "ag", "type": "agent", "position": {"x": 100, "y": 0},
+        "data": {
+          "label": "Echo",
+          "config": {"instructions": "You are a helpful assistant.", "model": {}}
+        }
+      },
+      {
+        "id": "br", "type": "condition", "position": {"x": 200, "y": 0},
+        "data": {
+          "label": "IsUrgent",
+          "config": {"condition": "contains:urgent", "elseTarget": "else_ag"}
+        }
+      },
+      {
+        "id": "then_ag", "type": "agent", "position": {"x": 300, "y": -100},
+        "data": {
+          "label": "UrgentAgent",
+          "config": {"instructions": "You are a helpful assistant.", "model": {}}
+        }
+      },
+      {
+        "id": "else_ag", "type": "agent", "position": {"x": 300, "y": 100},
+        "data": {
+          "label": "NormalAgent",
+          "config": {"instructions": "You are a helpful assistant.", "model": {}}
+        }
+      }
+    ],
+    "edges": [
+      {"id": "e2", "source": "ag",      "target": "br"},
+      {"id": "e3", "source": "br",      "target": "then_ag"}
+    ]
+  }
+}

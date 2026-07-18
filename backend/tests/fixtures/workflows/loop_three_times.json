@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "agnobuilder.workflow",
+  "exportedAt": "2026-08-12T00:00:00+00:00",
+  "workflow": {
+    "name": "loop_three_times",
+    "description": "loop(max=3, endCondition=DONE, body=iter). The loop body echoes the input; iteration stops early when its output contains 'DONE'.",
+    "nodes": [
+      {
+        "id": "lp",
+        "type": "loop",
+        "position": {"x": 200, "y": 0},
+        "data": {
+          "label": "Iterate",
+          "config": {"maxIterations": 3, "endCondition": "DONE", "forwardIterationOutput": false, "bodyTarget": "iter"}
+        }
+      },
+      {
+        "id": "iter",
+        "type": "agent",
+        "position": {"x": 100, "y": 0},
+        "data": {
+          "label": "IterBody",
+          "config": {"instructions": "You are a helpful assistant.", "model": {}}
+        }
+      }
+    ],
+    "edges": []
+  }
+}

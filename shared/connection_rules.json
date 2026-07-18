@@ -1,0 +1,98 @@
+{
+  "groups": {
+    "executable": [
+      "agent",
+      "branch",
+      "flow",
+      "loop",
+      "ask"
+    ],
+    "control_flow": [
+      "ask"
+    ],
+    "tool_source": [
+      "tool"
+    ]
+  },
+  "rules": {
+    "agent": {
+      "allowed_source_types": "@executable",
+      "allowed_target_types": "@executable",
+      "max_outgoing": 1,
+      "min_outgoing": 0,
+      "min_incoming": 0,
+      "max_incoming": null
+    },
+    "ask": {
+      "_doc_": "renamed from `human_input`. Same edge semantics: any executable (agent / branch / flow / loop) can target or be targeted. `max_outgoing: 1` enforces the prior 'one answer → next step' shape. Kind renamed to `control_flow` in the manifest, but the dataflow edge shape is unchanged — ask remains a graph node with the same wiring as agent.",
+      "allowed_source_types": "@executable",
+      "allowed_target_types": "@executable",
+      "max_outgoing": 1,
+      "min_outgoing": 0,
+      "min_incoming": 0,
+      "max_incoming": null
+    },
+    "branch": {
+      "_doc_": "replaces standalone `router` + `condition` connection rows. Both modes (N-ary `switch`, binary `if-else`) share the same connection rules (any executable can target / be targeted). Min/max outgoing match the prior `router` shape (lenient) — `if-else`'s stricter `min_outgoing=1, max_outgoing=2` is enforced at the strategy / IR layer (`BranchStrategy._build_if_else` raises if no `then` target), not at the connection layer.",
+      "allowed_source_types": "@executable",
+      "allowed_target_types": "@executable",
+      "max_outgoing": null,
+      "min_outgoing": 0,
+      "min_incoming": 0,
+      "max_incoming": null
+    },
+    "flow": {
+      "_doc_": "replaces standalone `parallel` and `steps` connection rows. `mode` (`parallel` | `sequential`) is a runtime / config concern, not a connection-semantic one — both modes share the same edge rules (any executable can target / be targeted).",
+      "allowed_source_types": "@executable",
+      "allowed_target_types": "@executable",
+      "max_outgoing": null,
+      "min_outgoing": 0,
+      "min_incoming": 0,
+      "max_incoming": null
+    },
+    "loop": {
+      "allowed_source_types": "@executable",
+      "allowed_target_types": "@executable",
+      "max_outgoing": 1,
+      "min_outgoing": 0,
+      "min_incoming": 0,
+      "max_incoming": null
+    },
+    "tool": {
+      "_doc_": "replaces standalone `tools` + `mcp` + `http` dataflow rows. Tool-source rule: no dataflow edges in either direction. The `source` discriminator (`mcp` | `http` | `function`) is a runtime / config concern, not a connection-semantic one — all 3 sources share the same empty edge rule. (wikipedia / tavily_search / duckduckgo / calculator / arxiv_search) — they were tool_source entries that `extended: 'tool'`; legacy envelopes are rewritten by `_compat.migrate_envelope` to `type: 'tool'` + `preset: '<name>'` on read.",
+      "allowed_source_types": [],
+      "allowed_target_types": [],
+      "max_outgoing": 0,
+      "min_outgoing": 0,
+      "min_incoming": 0,
+      "max_incoming": 0
+    }
+  },
+  "edge_kinds": {
+    "_doc_": "Per-edge-kind rule tables. per-edge-kind rule tables. The top-level `rules` block above is the `dataflow` table — it controls control-flow edges between executable nodes. `tool_attachment` is the new kind that lets tool-source nodes (`tool` with `source` discriminator `mcp` | `http` | `function`) hand their definition to an Agent; the resulting wiring is NOT in the workflow topology, only in the agent's `tools=[...]` at runtime / exported code generation. Unknown kinds fall back to `dataflow` rules.  `tool` collapses the prior `tools` + `http` + `mcp` rows.  `tool` via the `preset` discriminator — see the `rules.tool` row above.",
+    "tool_attachment": {
+      "rules": {
+        "agent": {
+          "_doc_": "An agent can be the TARGET of a tool_attachment edge (it consumes attached tools). Agents are NOT valid sources of tool_attachment edges.",
+          "allowed_source_types": "@tool_source",
+          "allowed_target_types": [],
+          "max_outgoing": 0,
+          "min_outgoing": 0,
+          "max_incoming": null,
+          "min_incoming": 0
+        },
+        "tool": {
+          "_doc_": "replaces standalone `tools` + `http` + `mcp` tool_attachment rows. A `tool` node can be SOURCED into an agent. `max_outgoing=null` lets one tool node be wired into N agents. The `source` discriminator (`mcp` | `http` | `function`) is a runtime concern, not a connection-semantic one — all 3 sources share the same `tool_attachment` rule. via the `preset` discriminator.",
+          "allowed_source_types": [],
+          "allowed_target_types": [
+            "agent"
+          ],
+          "max_outgoing": null,
+          "min_outgoing": 0,
+          "min_incoming": 0,
+          "max_incoming": 0
+        }
+      }
+    }
+  }
+}

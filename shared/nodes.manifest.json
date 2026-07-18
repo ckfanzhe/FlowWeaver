@@ -1,0 +1,270 @@
+{
+  "schemaVersion": 2,
+  "nodes": {
+    "agent": {
+      "kind": "executable",
+      "category": "Core",
+      "displayName": "Agent",
+      "i18nKey": "agent",
+      "color": "border-blue-400/50 bg-blue-50 dark:bg-blue-900",
+      "textColor": "text-blue-700 dark:text-blue-300",
+      "icon": "AgentIcon",
+      "configSchemaRef": "AgentNodeConfig",
+      "defaultConfig": {
+        "model": {
+          "provider": "openai",
+          "modelId": "gpt-4o",
+          "apiKey": ""
+        },
+        "instructions": "You are a helpful assistant.",
+        "toolsRef": [],
+        "markdown": true
+      },
+      "capabilities": {
+        "compoundPass": null,
+        "isToolSource": false,
+        "needsToolWiring": true,
+        "skipPass1": false,
+        "stepWrapper": "agent"
+      },
+      "ui": {
+        "group": "Core",
+        "form": "AgentForm",
+        "paletteOrder": 1
+      },
+      "runtime": {
+        "module": "app.core.strategies.agent",
+        "builder": "AgentStrategy"
+      },
+      "io": {
+        "inputs": [
+          "text"
+        ],
+        "outputs": [
+          "text"
+        ],
+        "tools": [
+          "llm_call"
+        ]
+      }
+    },
+    "branch": {
+      "_doc_": "replaces standalone `router` and `condition` nodes. Mode selects between N-ary routing (`switch`, agno `Router(selector=...)`) and binary if/else (`if-else`, agno `Condition(evaluator=...)`). Branch edges are wired via canvas edges (the `branches` list is a display mirror).",
+      "kind": "compound",
+      "category": "Core",
+      "displayName": "Branch",
+      "i18nKey": "branch",
+      "color": "border-orange-400/50 bg-orange-50 dark:bg-orange-900",
+      "textColor": "text-orange-700 dark:text-orange-300",
+      "icon": "BranchIcon",
+      "configSchemaRef": "BranchNodeConfig",
+      "defaultConfig": {
+        "mode": "switch",
+        "selector": {
+          "mode": "function",
+          "expression": "",
+          "fallbackMessage": ""
+        },
+        "evaluator": {
+          "mode": "function",
+          "expression": "",
+          "migratedFromLegacy": false
+        },
+        "branches": [],
+        "elseTarget": "",
+        "requiresConfirmation": false,
+        "confirmationMessage": ""
+      },
+      "capabilities": {
+        "compoundPass": 20,
+        "isToolSource": false,
+        "needsToolWiring": false,
+        "skipPass1": false,
+        "stepWrapper": "none"
+      },
+      "ui": {
+        "group": "Core",
+        "form": "BranchForm",
+        "paletteOrder": 2
+      },
+      "runtime": {
+        "module": "app.core.strategies.branch",
+        "builder": "BranchStrategy"
+      },
+      "io": {
+        "inputs": [
+          "text"
+        ],
+        "outputs": [
+          "text"
+        ],
+        "tools": []
+      }
+    },
+    "flow": {
+      "_doc_": "replaces standalone `parallel` and `steps` nodes. Mode selects between concurrent fan-out (`parallel`) and ordered pipeline (`sequential`); `requiresConfirmation` only takes effect in `sequential` mode. Branch edges are wired via canvas edges (the `branches` list is a display mirror).",
+      "kind": "compound",
+      "category": "Core",
+      "displayName": "Flow",
+      "i18nKey": "flow",
+      "color": "border-green-400/50 bg-green-50 dark:bg-green-900",
+      "textColor": "text-green-700 dark:text-green-300",
+      "icon": "FlowIcon",
+      "configSchemaRef": "FlowNodeConfig",
+      "defaultConfig": {
+        "mode": "parallel",
+        "branches": [],
+        "requiresConfirmation": false,
+        "confirmationMessage": ""
+      },
+      "capabilities": {
+        "compoundPass": 10,
+        "isToolSource": false,
+        "needsToolWiring": false,
+        "skipPass1": true,
+        "stepWrapper": "none"
+      },
+      "ui": {
+        "group": "Core",
+        "form": "FlowForm",
+        "paletteOrder": 3
+      },
+      "runtime": {
+        "module": "app.core.strategies.flow",
+        "builder": "FlowStrategy"
+      },
+      "io": {
+        "inputs": [
+          "text"
+        ],
+        "outputs": [
+          "text"
+        ],
+        "tools": []
+      }
+    },
+    "loop": {
+      "kind": "compound",
+      "category": "Core",
+      "displayName": "Loop",
+      "i18nKey": "loop",
+      "color": "border-red-300/40 bg-red-50 dark:bg-red-950",
+      "textColor": "text-red-800 dark:text-red-300",
+      "icon": "LoopIcon",
+      "configSchemaRef": "LoopNodeConfig",
+      "defaultConfig": {
+        "maxIterations": 3,
+        "endCondition": "",
+        "forwardIterationOutput": false,
+        "bodyTarget": ""
+      },
+      "capabilities": {
+        "compoundPass": 30,
+        "isToolSource": false,
+        "needsToolWiring": false,
+        "skipPass1": true,
+        "stepWrapper": "none"
+      },
+      "ui": {
+        "group": "Core",
+        "form": "LoopForm",
+        "paletteOrder": 5
+      },
+      "runtime": {
+        "module": "app.core.strategies.loop",
+        "builder": "LoopStrategy"
+      },
+      "io": {
+        "inputs": [
+          "text"
+        ],
+        "outputs": [
+          "text"
+        ],
+        "tools": []
+      }
+    },
+    "ask": {
+      "_doc_": "renamed from `human_input`. Single-step gate primitive. Wraps `Step(requires_user_input=True)` — pauses the pipeline to collect typed input (`text` / `confirm` / one of `choices[]`), then injects the answer as the step's output. Value collector, NOT a sequencer: no children (`io.inputs: []`). `kind: control_flow` (was `executable`) — the ask node is a gate, not an executor; same architectural class as compound nodes. Edge semantics unchanged: ask still participates as a dataflow node, just under the new kind/label.",
+      "kind": "control_flow",
+      "category": "Core",
+      "displayName": "Ask",
+      "i18nKey": "ask",
+      "color": "border-purple-300/40 bg-purple-50 dark:bg-purple-950",
+      "textColor": "text-purple-800 dark:text-purple-300",
+      "icon": "AskIcon",
+      "configSchemaRef": "AskConfig",
+      "defaultConfig": {
+        "prompt": "Please provide your input",
+        "inputType": "text",
+        "choices": []
+      },
+      "capabilities": {
+        "compoundPass": null,
+        "isToolSource": false,
+        "needsToolWiring": false,
+        "skipPass1": false,
+        "stepWrapper": "ask"
+      },
+      "ui": {
+        "group": "Core",
+        "form": "AskForm",
+        "paletteOrder": 6
+      },
+      "runtime": {
+        "module": "app.core.strategies.ask",
+        "builder": "AskStrategy"
+      },
+      "io": {
+        "inputs": [],
+        "outputs": [
+          "text"
+        ],
+        "tools": []
+      }
+    },
+    "tool": {
+      "_doc_": "replaces the prior standalone `http` + `mcp` + `tools` entries. `source` discriminator (`mcp` | `http` | `function`) selects which tool-emit primitive to build at runtime. Default `function` so a freshly-dropped `tool` node is a no-op empty-function source until the user picks a different mode.`preset` discriminator (`wikipedia` | `tavily_search` | `duckduckgo` | `calculator` | `arxiv_search` | null) collapses the prior 5 preset node types into this single `tool` entry — preset is checked BEFORE `source`, falling through to the source-based dispatch for HTTP presets (wikipedia) or toolkit-class lookup for.",
+      "kind": "tool_source",
+      "category": "Data",
+      "displayName": "Tool",
+      "i18nKey": "tool",
+      "color": "border-amber-400/50 bg-amber-50 dark:bg-amber-950",
+      "textColor": "text-amber-700 dark:text-amber-300",
+      "icon": "ToolIcon",
+      "configSchemaRef": "ToolNodeConfig",
+      "defaultConfig": {
+        "source": "function",
+        "preset": null,
+        "toolName": "",
+        "toolDescription": "",
+        "functions": [],
+        "enabled_methods": [],
+        "toolkit_options": {}
+      },
+      "capabilities": {
+        "compoundPass": null,
+        "isToolSource": true,
+        "needsToolWiring": false,
+        "skipPass1": false,
+        "stepWrapper": "none"
+      },
+      "ui": {
+        "group": "Data",
+        "form": "ToolForm",
+        "paletteOrder": 7
+      },
+      "runtime": {
+        "module": "app.core.strategies.tool",
+        "builder": "ToolStrategy"
+      },
+      "io": {
+        "inputs": [],
+        "outputs": [
+          "tool_call"
+        ],
+        "tools": []
+      }
+    }
+  }
+}

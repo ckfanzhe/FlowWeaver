@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "agnobuilder.workflow",
+  "exportedAt": "2026-08-12T00:00:00+00:00",
+  "workflow": {
+    "name": "router_picks_first",
+    "description": "router → first branch (default). The router picks the first branch when no signal is available.",
+    "nodes": [
+      {
+        "id": "r",
+        "type": "router",
+        "position": {"x": 100, "y": 0},
+        "data": {
+          "label": "RouteIt",
+          "config": {
+            "branches": [
+              {"target": "a", "label": "BranchA"},
+              {"target": "b", "label": "BranchB"}
+            ]
+          }
+        }
+      },
+      {
+        "id": "a",
+        "type": "agent",
+        "position": {"x": 200, "y": -50},
+        "data": {
+          "label": "BranchA",
+          "config": {
+            "instructions": "You are branch A.",
+            "model": {}
+          }
+        }
+      },
+      {
+        "id": "b",
+        "type": "agent",
+        "position": {"x": 200, "y": 50},
+        "data": {
+          "label": "BranchB",
+          "config": {
+            "instructions": "You are branch B.",
+            "model": {}
+          }
+        }
+      }
+    ],
+    "edges": [
+      {"id": "e2", "source": "r", "target": "a"},
+      {"id": "e3", "source": "r", "target": "b"}
+    ]
+  }
+}

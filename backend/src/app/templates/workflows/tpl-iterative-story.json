@@ -1,0 +1,58 @@
+{
+  "id": "tpl-iterative-story",
+  "locale": "en",
+  "category": "loop",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "Iterative Story Generator",
+      "description": "A writer agent self-iterates up to 3 times — drafting on the first run, then self-critiquing and revising on each subsequent iteration. The loop ends when the writer starts its reply with 'DONE'.",
+      "nodes": [
+        {
+          "id": "ag_writer",
+          "type": "agent",
+          "position": {
+            "x": 240,
+            "y": 200
+          },
+          "data": {
+            "label": "Writer",
+            "config": {
+              "instructions": "You're an iterative fiction writer. On the FIRST iteration the upstream text is the user's creative prompt — write a 3-paragraph opening scene. On SUBSEQUENT iterations the upstream text is your own previous draft — self-critique it (1 sentence) and revise. When fully satisfied, start your reply with 'DONE' followed by the final draft.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "lp",
+          "type": "loop",
+          "position": {
+            "x": 480,
+            "y": 0
+          },
+          "data": {
+            "label": "WriterLoop",
+            "config": {
+              "maxIterations": 3,
+              "endCondition": "DONE",
+              "forwardIterationOutput": true,
+              "bodyTarget": "ag_writer"
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ag_writer",
+          "target": "lp"
+        }
+      ]
+    }
+  }
+}

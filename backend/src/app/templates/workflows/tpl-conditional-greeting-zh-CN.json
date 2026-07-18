@@ -1,0 +1,82 @@
+{
+  "id": "tpl-conditional-greeting-zh-CN",
+  "locale": "zh-CN",
+  "category": "branching",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "条件问候",
+      "description": "if-else 分支直接读取工作流输入 —— 如果输入包含「紧急」则由紧急响应 Agent 回答，否则由普通 Agent 回答。",
+      "nodes": [
+        {
+          "id": "br",
+          "type": "branch",
+          "position": {
+            "x": 240,
+            "y": 0
+          },
+          "data": {
+            "label": "是否紧急",
+            "config": {
+              "mode": "if-else",
+              "evaluator": {
+                "mode": "function",
+                "expression": "'紧急' in (input or '')"
+              }
+            }
+          }
+        },
+        {
+          "id": "then_ag",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": -120
+          },
+          "data": {
+            "label": "紧急响应",
+            "config": {
+              "instructions": "优先、简练地回复。",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "else_ag",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": 120
+          },
+          "data": {
+            "label": "友善响应",
+            "config": {
+              "instructions": "用轻松友好的语气回复。",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "br",
+          "target": "then_ag"
+        },
+        {
+          "id": "e2",
+          "source": "br",
+          "target": "else_ag"
+        }
+      ]
+    }
+  }
+}

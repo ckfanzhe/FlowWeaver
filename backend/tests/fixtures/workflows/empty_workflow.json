@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "agnobuilder.workflow",
+  "exportedAt": "2026-08-12T00:00:00+00:00",
+  "workflow": {
+    "name": "empty_workflow",
+    "description": "Workflow that references a node type with no registered handler — used to verify the executor emits a single ErrorEvent (no orphan NodeStart/NodeEnd around the missing handler) so the frontend error trace matches the legacy behaviour.",
+    "nodes": [
+      {
+        "id": "bogus",
+        "type": "unsupported_node_type",
+        "position": {"x": 100, "y": 0},
+        "data": {
+          "label": "NoHandler",
+          "config": {}
+        }
+      }
+    ],
+    "edges": []
+  }
+}

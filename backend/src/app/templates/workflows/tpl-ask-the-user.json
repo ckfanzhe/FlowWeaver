@@ -1,0 +1,56 @@
+{
+  "id": "tpl-ask-the-user",
+  "locale": "en",
+  "category": "interaction",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "Ask the User",
+      "description": "An ask gate pauses the workflow to collect user input, then a final agent answers based on the user's response.",
+      "nodes": [
+        {
+          "id": "ask",
+          "type": "ask",
+          "position": {
+            "x": 240,
+            "y": 0
+          },
+          "data": {
+            "label": "AskUser",
+            "config": {
+              "prompt": "What would you like help with?",
+              "inputType": "text"
+            }
+          }
+        },
+        {
+          "id": "ag_final",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": 0
+          },
+          "data": {
+            "label": "Responder",
+            "config": {
+              "instructions": "Answer the user's question concisely.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ask",
+          "target": "ag_final"
+        }
+      ]
+    }
+  }
+}

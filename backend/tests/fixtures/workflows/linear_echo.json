@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "agnobuilder.workflow",
+  "exportedAt": "2026-08-12T00:00:00+00:00",
+  "workflow": {
+    "name": "linear_echo",
+    "description": "single agent (echoes the workflow input)",
+    "nodes": [
+      {
+        "id": "ag",
+        "type": "agent",
+        "position": {"x": 100, "y": 0},
+        "data": {
+          "label": "EchoAgent",
+          "config": {
+            "instructions": "You are a helpful assistant.",
+            "model": {}
+          }
+        }
+      }
+    ],
+    "edges": []
+  }
+}

@@ -1,0 +1,489 @@
+{
+  "common": {
+    "save": "保存",
+    "saving": "保存中…",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "✓ 已复制",
+    "download": "⬇ 下载",
+    "untitled": "未命名工作流",
+    "loading": "加载中…",
+    "confirm": "确认",
+    "back": "返回"
+  },
+  "toolbar": {
+    "new": "新建",
+    "load": "加载",
+    "export": "导出",
+    "exporting": "生成中…",
+    "settings": "设置",
+    "moreOptions": "更多操作",
+    "newConfirm": "放弃未保存的修改并新建工作流？",
+    "newPrompt": "新工作流名称",
+    "defaultName": "未命名",
+    "menu": {
+      "new": "新建工作流",
+      "newHint": "新建一个工作流（清空当前画布）",
+      "load": "加载工作流",
+      "export": "导出 Python",
+      "exportHint": "预览并下载为独立 .py 文件",
+      "exportJson": "导出 JSON",
+      "exportJsonHint": "下载为带版本号的 .json 文件（方便分享）",
+      "copyJson": "复制 JSON",
+      "copyJsonHint": "将工作流 JSON 复制到剪贴板",
+      "importJson": "从 JSON 导入…",
+      "importJsonHint": "从 .json 文件导入工作流",
+      "noWorkflows": "暂无已保存的工作流",
+      "switchUser": "切换用户",
+      "switchUserHint": "退出当前用户并选择其他邮箱（清除本浏览器中的身份）"
+    },
+    "share": {
+      "copiedTitle": "已复制到剪贴板",
+      "copiedBody": "工作流 JSON 已在剪贴板 — 粘贴到任何地方即可。",
+      "copyFailed": "复制失败：{error}",
+      "importTitle": "从 JSON 导入工作流？",
+      "importFromFile": "选择文件…",
+      "importReplaceHint": "这会在服务器上创建一个新工作流。当前画布会保留，除非你主动保存。",
+      "importUnparsedTitle": "无法解析 JSON",
+      "importUnparsedBody": "文件不是合法的 JSON：{error}",
+      "importRejectedTitle": "后端拒绝接收",
+      "importRejectedBody": "{error}",
+      "importWrongKindBody": "「${file}」不像 agno-builder 工作流。期望 `kind: \"agnobuilder.workflow\"`。",
+      "importTooBigBody": "文件过大（{size}）；上限 {max}。",
+      "importOk": "已导入 \"{name}\" — 正在打开…",
+      "dropTitle": "松开以导入",
+      "dropHint": "松手后会把该工作流加入画布"
+    },
+    "tooltips": {
+      "settings": "设置（LLM 预设、MCP 服务）",
+      "new": "新建工作流（清空当前画布）",
+      "export": "预览并下载工作流为独立 Python 文件"
+    }
+  },
+  "palette": {
+    "title": "节点",
+    "hint": "拖到画布上。从左到右连接节点。点击节点进行编辑。",
+    "expand": "展开节点面板",
+    "collapse": "收起节点面板",
+    "basicNodes": "基础节点",
+    "tools": "工具"
+  },
+  "panel": {
+    "empty": "选择一个节点以编辑其属性。",
+    "label": "标签",
+    "delete": "删除节点",
+    "deleteHint": "Delete / Backspace",
+    "close": "关闭属性面板",
+    "noConfig": "无需额外配置。",
+    "fields": {
+      "model": "模型",
+      "instructions": "指令",
+      "condition": "条件",
+      "prompt": "提示",
+      "inputType": "输入类型",
+      "serverId": "服务",
+      "toolNamePrefix": "工具名前缀",
+      "toolName": "工具名",
+      "toolDescription": "工具描述",
+      "baseUrl": "Base URL",
+      "method": "方法",
+      "path": "路径",
+      "headers": "请求头（JSON）",
+      "queryParams": "查询参数（JSON）",
+      "authToken": "认证 Token（可选）",
+      "bodySchema": "请求体 schema（JSON）",
+      "functions": "函数列表",
+      "addFunction": "+ 添加函数",
+      "functionName": "名称",
+      "functionDescription": "描述",
+      "functionParams": "参数（JSON schema）",
+      "functionCode": "代码（Python）",
+      "branches": "分支",
+      "maxIterations": "最大迭代次数",
+      "endCondition": "结束条件",
+      "bodyTarget": "循环体（要重复的步骤）",
+      "source": "数据源",
+      "preset": "预设"
+    },
+    "agent": {
+      "using": "正在使用",
+      "model": "模型",
+      "modelDefault": "系统默认模型",
+      "keySet": "已设置密钥",
+      "keyFallback": "使用 .env.llm 兜底",
+      "noDefaultTitle": "尚未配置默认模型",
+      "noDefaultNoPresets": "尚未配置任何 LLM 模型。请打开「设置」添加一个 — 工作流中的所有 Agent 都会使用该模型。",
+      "noDefaultWithPresets": "已保存 LLM 模型，但还没有标记为默认的。可以从上方下拉框手动为当前 Agent 选一个，或者打开「设置 → LLM 模型」将某个模型标记为默认。",
+      "openSettings": "打开设置",
+      "instructionsPlaceholder": "你是一个乐于助人的助手……",
+      "advancedLabel": "高级",
+      "advancedHint": "低频开关 — 推理、重试、解析器、钩子。留空使用 v1 默认行为。",
+      "systemMessageLabel": "系统消息（开发者层）",
+      "systemMessagePlaceholder": "你是一个严谨的助手，总是……",
+      "reasoningLabel": "启用链式思考推理",
+      "reasoningModelLabel": "推理模型（可选）",
+      "subModelNone": "— 无 —",
+      "retriesLabel": "失败重试次数",
+      "delayBetweenRetriesLabel": "重试间隔（秒）",
+      "toolCallLimitLabel": "单轮工具调用上限",
+      "toolCallLimitPlaceholder": "不限制",
+      "addDatetimeToContextLabel": "在上下文中追加当前日期",
+      "parserModelLabel": "解析模型（可选）",
+      "parserModelPromptLabel": "解析提示",
+      "parserModelPromptPlaceholder": "把 LLM 输出重新格式化为 JSON……",
+      "preHooksLabel": "前置钩子（tools 节点 ID）",
+      "postHooksLabel": "后置钩子（tools 节点 ID）",
+      "hooksPlaceholder": "没有可用的 tools 节点 — 添加一个以连接钩子。"
+    },
+    "branch": {
+      "hint": "Switch 模式从 N 个分支中选一个；if-else 模式在 evaluator 为真时运行 `then`，为假时运行 `else`。确定性 — 不调用 LLM。",
+      "modeLabel": "分支模式",
+      "modeSwitch": "Switch（N 元路由）",
+      "modeIfElse": "If / Else（二元条件）",
+      "modeHint": {
+        "switch": "基于上游步骤的输入通过 selector（function / CEL / HITL）选择最佳分支。",
+        "if-else": "仅当 evaluator 对上游步骤输入求值为真时运行 then 分支。"
+      },
+      "selectorModeLabel": "选择器模式",
+      "selectorModeHint": {
+        "function": "对上游步骤运行 Python 表达式，返回选中的分支步骤对象（如 `na_faq_step`）。不调用 LLM。",
+        "cel": "把 CEL 表达式字符串原样传给 agno，必须返回分支 label。运行时需要 `cel-python`。",
+        "hitl": "暂停执行，让用户选择分支。不调用 LLM — agno 把分支列表展示给用户。"
+      },
+      "evaluatorModeLabel": "Evaluator 模式",
+      "evaluatorModeHint": {
+        "function": "编写 Python 表达式对 step_input 求值。作用域内 5 个局部变量：previous_step_content、previous_step_outputs、input、additional_data、session_state。",
+        "cel": "编写 CEL（通用表达式语言）字符串，直接传给 agno。返回 boolean。需要安装 cel-python。",
+        "literal": "选择一个常量 True 或 False。"
+      },
+      "modeFunction": "Python 表达式",
+      "modeCel": "CEL 表达式",
+      "modeLiteral": "字面量 (True / False)",
+      "modeHitl": "人在回路",
+      "expressionLabel": "表达式",
+      "expressionPlaceholder": "na_faq_step if '账单' in previous_step_content else na_support_step",
+      "expressionHint": "5 个作用域变量：previous_step_content、previous_step_outputs、input、additional_data、session_state。",
+      "celLabel": "CEL 表达式",
+      "celPlaceholder": "input.contains(\"账单\")",
+      "celHint": "switch 模式下返回分支 label；if-else 模式下返回 boolean。CEL 文档：https://github.com/google/cel-spec",
+      "hitlPromptLabel": "用户提示",
+      "hitlPromptPlaceholder": "请选择处理此请求的部门：",
+      "hitlPromptHint": "agno 暂停让用户选分支时展示的提示。留空 = agno 用默认提示列出分支。",
+      "literalLabel": "值",
+      "thenTarget": "Then 分支",
+      "thenHint": "从此节点连出的第一条 edge。",
+      "elseTarget": "Else 分支",
+      "elseNone": "— 无 —",
+      "elseHint": "可选。条件为 false 时执行。",
+      "hitlLabel": "人机协同",
+      "requiresConfirmationLabel": "求值前请用户确认 then 分支",
+      "confirmationMessageLabel": "确认提示语",
+      "confirmationMessagePlaceholder": "继续执行 then 分支？"
+    },
+    "parallel": {
+      "hint": "分支通过从此节点连出 edge 指向目标节点来配置。"
+    },
+    "flow": {
+      "modeLabel": "执行模式",
+      "mode": {
+        "parallel": "并行",
+        "sequential": "顺序"
+      },
+      "hint": "分支通过从此节点连出 edge 指向目标节点来配置。",
+      "hitlLabel": "人在环上检查点",
+      "hitlHint": "在首个步骤开始之前暂停整个块并请求确认。一次提示 — 不是每步一次。",
+      "hitlHintParallel": "`parallel` 模式下忽略 — 切换到 `sequential` 模式以启用块级确认闸门。"
+    },
+    "steps": {
+      "hint": "按顺序执行分支 — edge 顺序就是执行顺序。从此节点连出 edge 指向要串联的步骤。",
+      "hitlLabel": "人在环上检查点",
+      "hitlHint": "在首个步骤开始之前暂停整个块并请求确认。一次提示 — 不是每步一次。"
+    },
+    "loop": {
+      "hint": "重复执行选中的步骤最多 N 次。当迭代输出包含结束条件子串时提前终止。",
+      "endConditionPlaceholder": "DONE",
+      "endConditionHint": "对迭代输出做子串匹配。留空则总是跑满最大迭代次数。",
+      "forwardLabel": "将每次迭代的输出作为下一次迭代的输入",
+      "bodyTarget": "循环体",
+      "bodyNone": "— 选择步骤 —",
+      "bodyHint": "每次迭代执行的步骤。从循环节点连出的 edge 是循环结束后执行的步骤。",
+      "hitlLabel": "人在环上检查点",
+      "hitlHint": "暂停循环并请求确认后再运行。两个独立检查点:循环开始时一次,以及每次迭代之前各一次。",
+      "requiresIterationReviewLabel": "每次迭代前询问",
+      "iterationReviewMessageLabel": "迭代确认提示",
+      "iterationReviewMessagePlaceholder": "即将开始第 {n} 轮迭代,是否继续?"
+    },
+    "ask": {
+      "promptPlaceholder": "你想了解什么？",
+      "choicesPlaceholder": "逗号分隔的选项（当输入类型 = 选择 时使用）"
+    },
+    "mcp": {
+      "selectServer": "— 选择服务 —",
+      "noServers": "暂无 MCP 服务 — 打开 ⚙ 设置以添加。",
+      "prefixHint": "可选。例如 \"fs_\" → 此服务暴露的所有工具都会命名为 \"fs_list\"、\"fs_read\" 等。"
+    },
+    "http": {
+      "toolNamePlaceholder": "fetch_user",
+      "toolDescriptionPlaceholder": "通过 id 查询用户",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "pathPlaceholder": "/users/{user_id}",
+      "headersPlaceholder": "{\"X-Token\": \"abc\"}",
+      "queryParamsPlaceholder": "{\"limit\": \"10\"}",
+      "authTokenPlaceholder": "粘贴 bearer token，留空表示无需认证",
+      "bodySchemaPlaceholder": "{\"type\": \"object\", \"properties\": {...}}"
+    },
+    "tools": {
+      "noFunctions": "还没有函数，点击「+ 添加函数」开始。"
+    },
+    "tool": {
+      "sourceHttp": "HTTP 请求",
+      "sourceMcp": "MCP 服务器",
+      "sourceFunction": "自定义函数",
+      "sourceHint": "选择数据源，下方表单会切换到对应字段。",
+      "presetNone": "— 无 —",
+      "presetHint": "选择一个内置工具集预设（wikipedia / tavily_search / duckduckgo / calculator / arxiv_search），或保持「无」以使用上方的自定义数据源。",
+      "presetBadge": "工具预设：{name}"
+    },
+    "toolPreset": {
+      "bundled": "平台内置工具集 — 下方配置控制暴露哪些方法和构造参数。",
+      "enabledMethods": "暴露的方法",
+      "noDeclaredMethods": "此预设未声明任何方法。",
+      "allExposedHint": "留空 = 暴露全部方法（默认）。",
+      "subsetHint": "已暴露 {count} 个方法（其余对 LLM 不可见）。",
+      "toolkitOptions": "构造参数 (kwargs)"
+    },
+    "inputType": {
+      "text": "文本",
+      "confirm": "确认（是/否）",
+      "choice": "选择"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "close": "关闭设置",
+    "tabs": {
+      "llm": "LLM 模型",
+      "mcp": "MCP 服务"
+    },
+    "llm": {
+      "hint": "这里保存的模型会在 Agent 节点的下拉框中显示。",
+      "add": "+ 添加模型",
+      "noPresets": "暂无预设。添加一个以在 Agent 节点中使用。",
+      "default": "默认",
+      "setDefault": "设为默认",
+      "currentDefault": "当前默认模型（点击其它行的 ☆ 切换）",
+      "newPreset": "新建预设",
+      "editPreset": "编辑预设",
+      "deleteConfirm": "删除预设 \"{name}\"？",
+      "thinkingOn": "思考模式",
+      "thinkingOnHint": "此预设已开启扩展推理。",
+      "fields": {
+        "name": "名称",
+        "provider": "提供商",
+        "modelId": "模型 ID",
+        "apiKey": "API 密钥",
+        "baseUrl": "Base URL（可选）",
+        "thinking": "思考模式",
+        "thinkingHint": "向模型发送扩展思考 / 推理参数。默认关闭 — 仅在需要推理能力的慢任务时启用。"
+      },
+      "placeholders": {
+        "name": "我的 Claude",
+        "modelId": "claude-sonnet-4-5",
+        "apiKey": "sk-...",
+        "baseUrl": "https://api.example.com",
+        "apiKeyUnchanged": "（未修改）"
+      }
+    },
+    "mcp": {
+      "hint": "MCP 服务被 Agent 节点引用。配置一次，多处复用。",
+      "add": "+ 添加服务",
+      "noServers": "暂无 MCP 服务。添加一个以启用 MCP 工具节点。",
+      "disabled": "已禁用",
+      "newServer": "新建 MCP 服务",
+      "editServer": "编辑 MCP 服务",
+      "deleteConfirm": "删除 MCP 服务 \"{name}\"？",
+      "fields": {
+        "name": "名称",
+        "transport": "传输方式",
+        "command": "命令",
+        "args": "参数（空格分隔）",
+        "url": "URL",
+        "enabled": "启用"
+      },
+      "transports": {
+        "stdio": "stdio（本地进程）",
+        "sse": "sse（远程 URL）"
+      },
+      "placeholders": {
+        "command": "npx",
+        "args": "-y @modelcontextprotocol/server-filesystem /tmp",
+        "url": "https://mcp.example.com/sse"
+      }
+    }
+  },
+  "export": {
+    "preview": "导出预览",
+    "generating": "生成中…",
+    "editHint": "可自由编辑——下载的文件只采用这里的文本。"
+  },
+  "chat": {
+    "title": "对话",
+    "titleRun": "运行工作流",
+    "titleBuild": "构建工作流",
+    "empty": "输入消息并按回车开始。",
+    "emptyRun": "输入消息并按回车运行工作流。",
+    "emptyRunHint": "工作流会在你发送第一条消息后立即启动。",
+    "emptyBuild": "描述你要修改的工作流，例如：“添加一个根据用户意图分支的 Router”。",
+    "emptyBuildHint": "智能体会规划修改，你可以审查后再应用差异。",
+    "greeting": "你好 👋 有什么可以帮你的吗？",
+    "inputPlaceholder": "发送消息以运行工作流……",
+    "buildPlaceholder": "描述工作流的修改……",
+    "buildPlaceholderEmpty": "描述你想创建的工作流，例如：“一个能根据用户输入自动分类，并把紧急请求路由给专属 Agent 的客服工作流”。",
+    "creatingWorkflow": "正在创建空白工作流……",
+    "confirmPlaceholder": "输入你的回答（如果是确认题，输入 \"yes\"/\"no\"）……",
+    "clear": "清空",
+    "copyJson": "复制",
+    "copyJsonCopied": "已复制",
+    "copyJsonFailed": "复制失败",
+    "retry": "连接中断，正在重试……",
+    "close": "关闭 ✕",
+    "send": "发送",
+    "keyHintSend": "Enter 发送",
+    "stop": "停止",
+    "keyHintStop": "Esc 停止",
+    "switchToRun": "运行",
+    "switchToRunHint": "切换到运行时对话，执行当前工作流。",
+    "switchToBuild": "构建",
+    "switchToBuildHint": "返回工作流构建对话。",
+    "modelDefault": "默认模型",
+    "modelEmpty": "配置模型",
+    "modelEmptyHint": "尚未配置模型预设。打开 设置 → LLM 模型 添加一个。",
+    "modelLabel": "模型",
+    "yes": "✓ 是",
+    "no": "✗ 否",
+    "kind": {
+      "asking": "正在询问你：",
+      "confirm": "请确认：",
+      "completed": "✓ 已完成"
+    },
+    "resize": "调整大小"
+  },
+  "node": {
+    "status": {
+      "running": "运行中…",
+      "completedMs": "{ms}ms",
+      "tokens": "{count} tok",
+      "errorGeneric": "执行失败"
+    }
+  },
+  "nodes": {
+    "agent":       { "label": "Agent",        "description": "LLM 代理节点" },
+    "branch":      { "label": "Branch",          "description": "Switch（N 元路由）或 if-else（二元条件）" },
+    "parallel":    { "label": "Parallel",          "description": "并行运行分支" },
+    "flow":        { "label": "Flow",          "description": "并行或顺序运行分支" },
+    "steps":       { "label": "Steps",          "description": "按顺序执行分支" },
+    "loop":        { "label": "Loop",          "description": "重复执行最多 N 次" },
+    "ask": { "label": "Ask",       "description": "暂停并询问用户" },
+    "tool":        { "label": "工具",           "description": "HTTP 请求、MCP 服务器、自定义 Python 函数，或内置工具集预设（wikipedia / tavily / duckduckgo / calculator / arxiv）" }
+  },
+  "templates": {
+    "title": "从模板开始",
+    "subtitle": "选一个起点，加载后再随意修改。",
+    "footer": "提示：选个模板，跟随它了解每个组件的用法。",
+    "startEmpty": "+ 空白起点",
+    "discardWarning": "⚠ 当前画布有未保存的修改，加载模板会丢弃它们。",
+    "nodes": "节点",
+    "edges": "连线",
+    "categories": {
+      "starter": "入门",
+      "interaction": "交互",
+      "branching": "分支",
+      "loop": "循环",
+      "tools": "工具",
+      "complex": "复杂组合"
+    },
+    "cards": {
+      "tpl-hello-world": {
+        "name": "Hello World",
+        "description": "最简单的工作流——输入直接喂给 Agent，回复流转到输出。"
+      },
+      "tpl-ask-the-user": {
+        "name": "询问用户",
+        "description": "询问节点暂停流程收集用户输入，最终 Agent 根据用户的回答进行回复。"
+      },
+      "tpl-conditional-greeting": {
+        "name": "条件问候",
+        "description": "if-else 分支直接读取工作流输入——输入包含「紧急」时由紧急响应 Agent 回复，否则由普通 Agent 回复。"
+      },
+      "tpl-iterative-story": {
+        "name": "迭代故事生成",
+        "description": "写作 Agent 自我迭代最多 3 次——首次迭代起草，后续迭代自我点评并改写（输出「DONE」停止）。"
+      },
+      "tpl-parallel-summary": {
+        "name": "并行研究并合成",
+        "description": "两个 Agent 从正反两个角度并行分析用户的输入；下游合成 Agent 综合两者的观点给出一个平衡的回答。"
+      }
+    }
+  },
+  "canvas": {
+    "connectionMode": {
+      "unreachable": {
+        "type": "无法连接 — 该节点类型不能以此方向连接。",
+        "tooMany": "无法连接 — 该节点已达最大连接数。",
+        "selfLoop": "无法连接 — 节点不能连接到自己。",
+        "duplicate": "无法连接 — 这两个节点已经连接。",
+        "incompatible": "无法连接到此节点。"
+      }
+    }
+  },
+  "identity": {
+    "chipTooltip": "点击切换用户",
+    "gate": {
+      "title": "请确认身份",
+      "subtitle": "输入您的邮箱以加载您的工作流。本平台无需登录，邮箱仅用于服务端识别此浏览器，并可在其他设备上恢复您的工作。",
+      "label": "邮箱",
+      "placeholder": "you@example.com",
+      "hint": "提示：在其他设备上使用相同邮箱即可恢复您的工作流。",
+      "submit": "进入"
+    },
+    "menu": {
+      "signedInAs": "当前身份",
+      "avatar": "头像",
+      "language": "语言",
+      "theme": "主题",
+      "themes": {
+        "light": "浅色",
+        "dark": "深色",
+        "system": "跟随系统"
+      },
+      "settings": "设置",
+      "settingsHint": "LLM 预设、MCP 服务",
+      "switchUser": "切换用户"
+    }
+  },
+  "errors": {
+    "untitled": "工作流名称必填",
+    "connection": {
+      "selfLoop": "节点不能连接到自己。",
+      "duplicateEdge": "这两个节点之间已经存在连线。",
+      "incompatibleSource": "该节点类型不能作为连线的起点。请通过属性面板配置（如 toolsRef）。",
+      "incompatibleTarget": "该节点类型不能作为连线的终点。",
+      "tooManyOutgoing": "该节点的出边已达到上限。",
+      "tooManyIncoming": "该节点的入边已达到上限。",
+      "missingOutgoing": "该节点至少需要一条出边。",
+      "missingIncoming": "该节点至少需要一条入边。",
+      "missingInput": "工作流缺少 Input 节点。",
+      "noThen": "Condition 节点至少需要一条出边（即 then 分支）。",
+      "loopBodyViaEdge": "Loop 的 body 已在属性面板中设置——请删除这条多余的连线。"
+    }
+  },
+  "contextMenu": {
+    "addNode": "添加节点",
+    "fitView": "适应视图",
+    "delete": "删除",
+    "duplicate": "复制"
+  }
+}

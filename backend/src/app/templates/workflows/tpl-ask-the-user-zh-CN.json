@@ -1,0 +1,56 @@
+{
+  "id": "tpl-ask-the-user-zh-CN",
+  "locale": "zh-CN",
+  "category": "interaction",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "询问用户",
+      "description": "询问节点暂停流程收集用户输入，最终 Agent 根据用户的回答进行回复。",
+      "nodes": [
+        {
+          "id": "ask",
+          "type": "ask",
+          "position": {
+            "x": 240,
+            "y": 0
+          },
+          "data": {
+            "label": "询问用户",
+            "config": {
+              "prompt": "请问您想了解什么？",
+              "inputType": "text"
+            }
+          }
+        },
+        {
+          "id": "ag_final",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": 0
+          },
+          "data": {
+            "label": "回复者",
+            "config": {
+              "instructions": "简洁地回答用户的问题。",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ask",
+          "target": "ag_final"
+        }
+      ]
+    }
+  }
+}

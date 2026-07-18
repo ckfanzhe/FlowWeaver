@@ -1,0 +1,35 @@
+{
+  "id": "tpl-hello-world",
+  "locale": "en",
+  "category": "starter",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2026-08-12T00:00:00+00:00",
+    "workflow": {
+      "name": "Hello World",
+      "description": "The simplest possible workflow — a single agent replies to the user's input.",
+      "nodes": [
+        {
+          "id": "ag",
+          "type": "agent",
+          "position": {
+            "x": 240,
+            "y": 0
+          },
+          "data": {
+            "label": "Greeter",
+            "config": {
+              "instructions": "You are a friendly assistant. Reply concisely.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        }
+      ],
+      "edges": []
+    }
+  }
+}

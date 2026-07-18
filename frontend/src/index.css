@@ -1,0 +1,405 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────
+   Theme tokens
+   All UI colours are defined as space-separated RGB channels so
+   Tailwind's `<alpha-value>` modifier works (e.g. `bg-surface/50`).
+   Components should reference these via semantic classes
+   (bg-surface, text-ink, border-edge, …) instead of raw gray-XX.
+
+   Light-mode tokens mirror VSCode's "Light Modern 2026"
+   (light_modern.json) and the dark-mode tokens mirror VSCode's
+   "Dark Modern 2026" (dark_modern.json). The accent is the
+   refined mid-blue used by VSCode's focus / button / link
+   foreground — more saturated and less pastel than the previous
+   sky-400 default. Light-mode backgrounds are pulled from
+   editor.background / sideBar.background so the panel feels
+   layered (#FFFFFF canvas on #F8F8F8 chrome) rather than a
+   single sheet of glaring white.
+   ─────────────────────────────────────────────────────────────────
+*/
+:root {
+  /* Surfaces — editor / sidebar / list-hover */
+  --bg:           255 255 255;   /* editor.background */
+  --surface:      248 248 248;   /* sideBar.background */
+  --surface-2:    242 242 242;   /* list.hoverBackground */
+  --bubble-bg:    235 235 235;   /* assistant-prose bubble: clearly gray */
+
+  /* Text */
+  --text:         59 59 59;      /* foreground */
+  --text-muted:   97 97 97;      /* descriptionForeground / inactive */
+  --text-faint:   134 134 134;   /* placeholderForeground / inactive */
+
+  /* Borders */
+  --border:       229 229 229;   /* sideBar.border */
+  --border-strong:206 206 206;   /* input.border / settings.textInputBorder */
+
+  /* Accent — focusBorder / button.background / textLink.foreground */
+  --accent:       0 95 184;
+  --accent-hover: 2 88 168;      /* button.hoverBackground */
+  --accent-soft:  232 241 251;   /* very-light accent tint (selection chip) */
+  --accent-text:  0 95 184;
+
+  /* Status */
+  --success:      46 160 67;     /* editorGutter.addedBackground */
+  --success-bg:   232 246 234;
+  --warning:      187 128 9;     /* editor.findMatchBackground */
+  --warning-bg:   252 244 220;
+  --danger:       248 81 73;     /* errorForeground */
+  --danger-bg:    254 235 233;
+
+  /* Canvas */
+  --canvas-bg:    255 255 255;
+  --canvas-grid:  229 229 229;
+
+  color-scheme: light;
+}
+
+:root.dark {
+  /* Surfaces — editor / sidebar / dropdown */
+  --bg:           31 31 31;      /* editor.background */
+  --surface:      24 24 24;      /* sideBar.background */
+  --surface-2:    49 49 49;      /* dropdown.background */
+  --bubble-bg:    44 44 44;      /* assistant-prose bubble: mid-gray, clearly lighter than panel */
+
+  --text:         204 204 204;   /* foreground */
+  --text-muted:   157 157 157;   /* descriptionForeground */
+  --text-faint:   134 134 134;   /* activityBar.inactiveForeground */
+
+  --border:       43 43 43;      /* sideBar.border */
+  --border-strong:60 60 60;      /* input.border */
+
+  /* Accent — focusBorder / button.background / textLink.foreground */
+  --accent:       0 120 212;
+  --accent-hover: 2 110 193;     /* button.hoverBackground */
+  --accent-soft:  38 71 120;     /* desaturated dark-blue tint for selection */
+  --accent-text:  77 170 252;    /* textLink.foreground */
+
+  --success:      46 160 67;
+  --success-bg:   20 50 30;
+  --warning:      187 128 9;
+  --warning-bg:   70 50 15;
+  --danger:       248 81 73;
+  --danger-bg:    70 25 22;
+
+  --canvas-bg:    31 31 31;
+  --canvas-grid:  43 43 43;
+
+  color-scheme: dark;
+}
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+  }
+  body {
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+                 "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                 sans-serif;
+    background-color: rgb(var(--bg));
+    color: rgb(var(--text));
+    /* Smooth theme transition */
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+}
+
+@layer utilities {
+  .react-flow__attribution {
+    display: none !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Directional dataflow edges
+
+   All edge styling — stroke colour, dash pattern, and the flowing
+   dash motion — lives inside `DataflowEdge.tsx` /
+   `ToolAttachmentEdge.tsx`. The animation is driven by SVG SMIL
+   `<animate>` on the path element (not by a CSS keyframe), so this
+   file deliberately has no `@keyframes` rule to define or override.
+   This is by design: a CSS-driven `stroke-dashoffset` keyframe was
+   tried first but the motion never appeared at runtime — most likely
+   because Vite's CSS pipeline didn't preserve a keyframe referenced
+   only from a JS-computed `style.animation` string. SMIL is parsed
+   and executed by the browser's SVG renderer directly, so it
+   doesn't depend on any external CSS being in scope.
+
+   Why two edge kinds?
+     * `react-flow__edge-dataflow`        — control flow, animated
+     * `react-flow__edge-tool-attachment` — wiring hint, static dashes
+   Tool-source nodes (functions / http / mcp) feed capability into an
+   agent but are NOT a step in the workflow. Making them visually
+   distinct keeps the dataflow path readable.
+   ─────────────────────────────────────────────────────────────────
+*/
+
+/* ─────────────────────────────────────────────────────────────────
+   Custom themed scrollbars
+
+   The native browser scrollbar shows up unstyled inside the chat
+   panel (and a few other narrow scrollable surfaces). These rules
+   overlay it with a thin, theme-matched bar that doesn't grab visual
+   attention — visible on hover, faded otherwise. Works on WebKit
+   (Chrome/Safari/Edge) and Firefox via `scrollbar-width`.
+
+   The `.chat-scroll` class on the messages container forces the
+   styling even where the global `*` rule is overridden.
+   ─────────────────────────────────────────────────────────────────
+*/
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-strong) / 0.7) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--border-strong) / 0.6);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 150ms ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-muted) / 0.8);
+  background-clip: padding-box;
+}
+
+/* `.chat-scroll` opts into the more visible variant — the messages
+   container scrolls frequently so the user benefits from the clearer
+   affordance. */
+.chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border-strong) / 0.9) transparent;
+}
+.chat-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--border-strong) / 0.85);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-muted));
+  background-clip: padding-box;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Chat-surface text size + InProgress artifact
+
+   The assistant-ui framework renders TextMessagePart as a
+   `<p>` (default web component) with `whiteSpace: pre-line`.
+   The default Chrome `<p>` font-size is 16px which the user
+   reads as too large in the narrow sidebar.
+
+   We override the `Text` slot with `MarkdownText` (see
+   `components/ChatMessageParts/MarkdownText.tsx`) which renders
+   the prose via `react-markdown`. The bubble chrome around the
+   text is owned by `MessageBubbleForRole` (user) or `MarkdownText`
+   (assistant), depending on role. The styles below apply to the
+   prose body inside that bubble — they intentionally scope via
+   `.chat-prose` so they only affect the chat panel, not the rest
+   of the app.
+
+   The framework appends `<span> ●</span>` via
+   `MessagePartPrimitiveInProgress` while a part is in
+   `running` state. We hide that span so the LLM's prose
+   doesn't render a stray bullet during smooth streaming.
+   ─────────────────────────────────────────────────────────────────
+*/
+.chat-surface p {
+  font-size: 0.8125rem; /* 13px — chat-friendly in the sidebar */
+  line-height: 1.45;
+  margin: 0 0 0.5rem 0;
+  white-space: pre-line;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.chat-surface p:last-child {
+  margin-bottom: 0;
+}
+.chat-surface p span[data-aui-running] {
+  display: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Chat-prose — markdown prose inside the assistant / user bubble.
+
+   react-markdown renders the LLM's response as a tree of native
+   tags (`p`, `h1-h6`, `ul`/`ol`/`li`, `blockquote`, `strong`,
+   `em`, `del`, `table`/`th`/`td`, `hr`, `br`, etc.). The bare
+   Chrome defaults are wrong for a narrow chat sidebar (too big,
+   too tight, unstyled tables). The rules below tune them down
+   to fit and use the app's theme tokens so they read as part of
+   the same design system.
+
+   Custom element renderers (`a` / `code` / `pre` / `table` wrap)
+   are owned by `MarkdownText.tsx` — those styles live with the
+   component because they need JS-side props (e.g. inline vs
+   block for `code`).
+   ─────────────────────────────────────────────────────────────────
+*/
+.chat-prose {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: rgb(var(--text));
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.chat-prose > *:first-child {
+  margin-top: 0;
+}
+.chat-prose > *:last-child {
+  margin-bottom: 0;
+}
+.chat-prose p {
+  margin: 0 0 0.5rem 0;
+  white-space: pre-line;
+}
+.chat-prose p:last-child {
+  margin-bottom: 0;
+}
+.chat-prose h1,
+.chat-prose h2,
+.chat-prose h3,
+.chat-prose h4,
+.chat-prose h5,
+.chat-prose h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0.85rem 0 0.35rem;
+  color: rgb(var(--text));
+}
+.chat-prose h1 { font-size: 1.05rem; }
+.chat-prose h2 { font-size: 0.95rem; }
+.chat-prose h3 { font-size: 0.875rem; }
+.chat-prose h4 { font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.04em; color: rgb(var(--text-muted)); }
+.chat-prose h5,
+.chat-prose h6 { font-size: 0.8125rem; color: rgb(var(--text-muted)); }
+.chat-prose ul,
+.chat-prose ol {
+  margin: 0 0 0.5rem 0;
+  padding-left: 1.25rem;
+}
+.chat-prose ul { list-style: disc; }
+.chat-prose ol { list-style: decimal; }
+.chat-prose li {
+  margin: 0.1rem 0;
+}
+.chat-prose li > ul,
+.chat-prose li > ol {
+  margin: 0.1rem 0 0.25rem;
+}
+.chat-prose li > p {
+  margin: 0;
+}
+.chat-prose li::marker {
+  color: rgb(var(--text-faint));
+}
+/* GFM task lists: <li><input type="checkbox" disabled /></li>.
+   Hide the native checkbox and draw a small checkbox glyph so
+   they look uniform across browsers and don't pick up the dark
+   theme accent when the user toggles a checked state. */
+.chat-prose li > input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0 0.4rem 0 -1.25rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 1px solid rgb(var(--border-strong));
+  border-radius: 3px;
+  background: rgb(var(--surface));
+  display: inline-grid;
+  place-content: center;
+  vertical-align: middle;
+}
+.chat-prose li > input[type="checkbox"]:checked {
+  background: rgb(var(--accent));
+  border-color: rgb(var(--accent));
+}
+.chat-prose li > input[type="checkbox"]:checked::before {
+  content: "✓";
+  font-size: 0.7rem;
+  line-height: 1;
+  color: #fff;
+}
+.chat-prose blockquote {
+  margin: 0.4rem 0 0.5rem;
+  padding: 0.1rem 0.75rem;
+  border-left: 3px solid rgb(var(--border-strong));
+  color: rgb(var(--text-muted));
+}
+.chat-prose blockquote > p:last-child {
+  margin-bottom: 0;
+}
+.chat-prose strong { font-weight: 600; }
+.chat-prose em { font-style: italic; }
+.chat-prose del {
+  color: rgb(var(--text-muted));
+  text-decoration-color: rgb(var(--text-faint));
+}
+/* Strikethrough AND bold (GFM allows both) — keep weight */
+.chat-prose del > strong { font-weight: 600; }
+.chat-prose hr {
+  border: 0;
+  border-top: 1px solid rgb(var(--border));
+  margin: 0.6rem 0;
+}
+/* GFM tables — react-markdown already wraps in our custom
+   `MarkdownTable` for the overflow scroll; we just style the
+   internals. The `<th>` keeps the same edge token as the bubble. */
+.chat-prose th,
+.chat-prose td {
+  border: 1px solid rgb(var(--border));
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+.chat-prose th {
+  background: rgb(var(--surface-2));
+  font-weight: 600;
+}
+.chat-prose table {
+  color: rgb(var(--text));
+}
+/* Inside the accent user bubble, links / inline code / blockquote
+   need overrides because the surrounding text is white. */
+.chat-prose a,
+.chat-prose-bubble a {
+  /* The AnchorLink component uses `text-accent-text`, which
+     resolves to a light blue against the dark user bubble —
+     that's intentional and tested. Nothing to add here. */
+}
+
+@layer components {
+  .input {
+    @apply block w-full rounded-md border border-edge bg-surface px-2.5 py-1.5 text-sm text-ink shadow-sm
+           placeholder:text-ink-faint
+           focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent
+           disabled:bg-surface-2 disabled:text-ink-muted;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md border border-edge bg-surface px-3 py-1.5 text-sm text-ink hover:bg-surface-2 disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-hover disabled:bg-surface-2 disabled:text-ink-muted;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-md border border-danger/30 bg-danger-bg px-3 py-1.5 text-sm text-danger hover:bg-danger/10;
+  }
+  .field-label {
+    @apply mb-1 block text-xs font-medium text-ink-muted;
+  }
+}

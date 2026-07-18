@@ -1,0 +1,82 @@
+{
+  "id": "tpl-conditional-greeting",
+  "locale": "en",
+  "category": "branching",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "Conditional Greeting",
+      "description": "If-else branch reads the workflow input directly — if the input contains 'urgent' the urgent responder replies, otherwise the casual one.",
+      "nodes": [
+        {
+          "id": "br",
+          "type": "branch",
+          "position": {
+            "x": 240,
+            "y": 0
+          },
+          "data": {
+            "label": "IsUrgent",
+            "config": {
+              "mode": "if-else",
+              "evaluator": {
+                "mode": "function",
+                "expression": "'urgent' in (input or '')"
+              }
+            }
+          }
+        },
+        {
+          "id": "then_ag",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": -120
+          },
+          "data": {
+            "label": "UrgentResponder",
+            "config": {
+              "instructions": "Reply with priority and brevity.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "else_ag",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": 120
+          },
+          "data": {
+            "label": "CasualResponder",
+            "config": {
+              "instructions": "Reply in a relaxed, friendly tone.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "br",
+          "target": "then_ag"
+        },
+        {
+          "id": "e2",
+          "source": "br",
+          "target": "else_ag"
+        }
+      ]
+    }
+  }
+}

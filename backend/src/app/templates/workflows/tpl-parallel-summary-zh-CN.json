@@ -1,0 +1,114 @@
+{
+  "id": "tpl-parallel-summary-zh-CN",
+  "locale": "zh-CN",
+  "category": "compound",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "并行研究并合成",
+      "description": "两个 Agent 从正反两个角度并行分析用户的输入；下游合成 Agent 综合两者的观点给出一个平衡的回答。",
+      "nodes": [
+        {
+          "id": "flow_p",
+          "type": "flow",
+          "position": {
+            "x": 240,
+            "y": 0
+          },
+          "data": {
+            "label": "扇出",
+            "config": {
+              "mode": "parallel",
+              "branches": [
+                {
+                  "target": "a_pro"
+                },
+                {
+                  "target": "a_con"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "a_pro",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": -120
+          },
+          "data": {
+            "label": "支持",
+            "config": {
+              "instructions": "列出支持用户主题的最有力论点。两段简明文字。",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "a_con",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": 120
+          },
+          "data": {
+            "label": "反对",
+            "config": {
+              "instructions": "列出反对用户主题的最有力论点。两段简明文字。",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "a_synth",
+          "type": "agent",
+          "position": {
+            "x": 720,
+            "y": 0
+          },
+          "data": {
+            "label": "合成",
+            "config": {
+              "instructions": "阅读上游的支持与反对论点，写一段平衡的文字综合两边的观点。",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "flow_p",
+          "target": "a_pro"
+        },
+        {
+          "id": "e2",
+          "source": "flow_p",
+          "target": "a_con"
+        },
+        {
+          "id": "e3",
+          "source": "a_pro",
+          "target": "a_synth"
+        },
+        {
+          "id": "e4",
+          "source": "a_con",
+          "target": "a_synth"
+        }
+      ]
+    }
+  }
+}

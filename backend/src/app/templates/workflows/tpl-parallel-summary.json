@@ -1,0 +1,114 @@
+{
+  "id": "tpl-parallel-summary",
+  "locale": "en",
+  "category": "compound",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "Parallel Research with Synthesis",
+      "description": "Two agents analyze the input from opposing angles in parallel; a sibling synthesizer combines their findings into one balanced answer.",
+      "nodes": [
+        {
+          "id": "flow_p",
+          "type": "flow",
+          "position": {
+            "x": 240,
+            "y": 0
+          },
+          "data": {
+            "label": "FanOut",
+            "config": {
+              "mode": "parallel",
+              "branches": [
+                {
+                  "target": "a_pro"
+                },
+                {
+                  "target": "a_con"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "a_pro",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": -120
+          },
+          "data": {
+            "label": "Pros",
+            "config": {
+              "instructions": "List the strongest arguments in favour of the user's topic. Two short paragraphs.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "a_con",
+          "type": "agent",
+          "position": {
+            "x": 480,
+            "y": 120
+          },
+          "data": {
+            "label": "Cons",
+            "config": {
+              "instructions": "List the strongest arguments against the user's topic. Two short paragraphs.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "a_synth",
+          "type": "agent",
+          "position": {
+            "x": 720,
+            "y": 0
+          },
+          "data": {
+            "label": "Synthesizer",
+            "config": {
+              "instructions": "Read the upstream pros and cons arguments and write one balanced paragraph that combines both perspectives.",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "flow_p",
+          "target": "a_pro"
+        },
+        {
+          "id": "e2",
+          "source": "flow_p",
+          "target": "a_con"
+        },
+        {
+          "id": "e3",
+          "source": "a_pro",
+          "target": "a_synth"
+        },
+        {
+          "id": "e4",
+          "source": "a_con",
+          "target": "a_synth"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "tpl-iterative-story-zh-CN",
+  "locale": "zh-CN",
+  "category": "loop",
+  "envelope": {
+    "schemaVersion": "1.0",
+    "kind": "agnobuilder.workflow",
+    "exportedAt": "2025-01-01T00:00:00+00:00",
+    "workflow": {
+      "name": "迭代故事生成",
+      "description": "写作 Agent 最多自我迭代 3 次——首次迭代起草，后续迭代自我点评并改写。Agent 回复以「DONE」开头时循环结束。",
+      "nodes": [
+        {
+          "id": "ag_writer",
+          "type": "agent",
+          "position": {
+            "x": 240,
+            "y": 200
+          },
+          "data": {
+            "label": "写作Agent",
+            "config": {
+              "instructions": "你是一位迭代式小说家。首次迭代时，上游文本是用户的创意要求——请写一段 3 段的开场场景。后续迭代时，上游文本是你自己上一轮写的草稿——用 1 句话自我点评，然后改写。当你完全满意时，请在回复开头写「DONE」并附上最终稿。",
+              "model": {
+                "provider": "anthropic",
+                "modelId": "claude-sonnet-4-5"
+              }
+            }
+          }
+        },
+        {
+          "id": "lp",
+          "type": "loop",
+          "position": {
+            "x": 480,
+            "y": 0
+          },
+          "data": {
+            "label": "写作循环",
+            "config": {
+              "maxIterations": 3,
+              "endCondition": "DONE",
+              "forwardIterationOutput": true,
+              "bodyTarget": "ag_writer"
+            }
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ag_writer",
+          "target": "lp"
+        }
+      ]
+    }
+  }
+}
