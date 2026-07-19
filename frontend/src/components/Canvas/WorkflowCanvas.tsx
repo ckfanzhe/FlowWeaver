@@ -129,21 +129,30 @@ function CanvasInner() {
    * Shared by the drop-time validator, the `isValidConnection`
    * callback, and the drag-state reachable set.
    */
+  const nodesRef = useRef(nodes)
+  const edgesRef = useRef(edges)
+  nodesRef.current = nodes
+  edgesRef.current = edges
+  // Reads `nodes` / `edges` from refs (not closure deps) so the
+  // callback identity stays stable across store mutations. Otherwise
+  // every `addNode` / `setNode` invalidates `validateConnection`,
+  // which invalidates the `unreachable` memo, which re-spreads new
+  // objects into the rfNodes `.map()` on every store tick — the
+  // canvas re-renders mid-drag and the dragged node snaps to the
+  // release point instead of following the cursor.
   const validateConnection = useCallback(
     (src: string, tgt: string): RuleError[] => {
       if (!src || !tgt) return []
-      const srcNode = nodes.find((n) => n.id === src)
-      // phase : dropped the `as never` cast — both
-      // `srcNode.type` and `TOOL_SOURCE_TYPES` are `NodeType`-typed
-      // after the phase manifest-derived union, so `.has(type)`
-      // is type-safe.
+      const curNodes = nodesRef.current
+      const curEdges = edgesRef.current
+      const srcNode = curNodes.find((n) => n.id === src)
       const kind: EdgeKind =
         srcNode && TOOL_SOURCE_TYPES.has(srcNode.type)
           ? 'tool_attachment'
           : 'dataflow'
-      return wouldBeValidConnection(src, tgt, nodes, edges, kind)
+      return wouldBeValidConnection(src, tgt, curNodes, curEdges, kind)
     },
-    [nodes, edges],
+    [],
   )
 
   /**
@@ -159,7 +168,10 @@ function CanvasInner() {
     }
     const reachable = new Set<string>()
     const reasons = new Map<string, string>()
-    for (const n of nodes) {
+    // Read `nodes` from the ref so this memo only re-runs when
+    // `pendingSource` or `validateConnection` identity changes —
+    // not on every node store tick.
+    for (const n of nodesRef.current) {
       if (n.id === pendingSource) continue
       const errs = validateConnection(pendingSource, n.id)
       if (errs.length === 0) {
@@ -169,7 +181,7 @@ function CanvasInner() {
       }
     }
     return { reachable, reasons }
-  }, [pendingSource, nodes, validateConnection])
+  }, [pendingSource, validateConnection])
 
   // Local, React-Flow-controlled copy of the workflow's edges.
   //

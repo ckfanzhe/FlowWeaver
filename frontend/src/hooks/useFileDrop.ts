@@ -70,7 +70,11 @@ export function useFileDrop({ accept, onFile }: Options) {
       if (!isFileDrag(e)) return
       e.preventDefault()
       depthRef.current += 1
-      setState('hovering')
+      // Only setState on the idle → transition. `dragenter` fires for
+      // every child element under the cursor, so without this guard
+      // App.tsx re-renders dozens of times per drag tick — visible
+      // lag when the workflow has 10+ nodes.
+      setState((prev) => (prev === 'hovering' ? prev : 'hovering'))
     }
 
     const onDragOver = (e: DragEvent) => {
