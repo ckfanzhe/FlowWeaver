@@ -4,6 +4,10 @@
 
 FlowWeaver 是一款开源的 [agno](https://github.com/agno-agi/agno) 风格智能体工作流可视化编辑器。在画布上拖放节点、连接数据流与工具挂载点、在聊天面板里运行多轮工作流，并把整个流程导出为只依赖 agno 的独立 Python 文件。FlowWeaver 受 **Agnobuilder** 等社区项目启发，专注于单引擎运行时、声明式节点类型定义，以及更友好的对话驱动创建体验。
 
+<p align="center">
+  <img src="./images/image-cn.png" alt="FlowWeaver 画布 —— 带聊天面板的可视化工作流编辑器" width="900" />
+</p>
+
 ## 特性
 
 - **可视化编排** —— React Flow 画布，6 种节点类型（`agent`、`ask`、`branch`、`flow`、`loop`、`tool`），覆盖可执行节点、控制流节点、复合节点和工具源节点。

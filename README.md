@@ -8,6 +8,10 @@
 
 FlowWeaver is an open-source visual builder for [agno](https://github.com/agno-agi/agno)-style agent workflows. Drag-and-drop nodes onto a canvas, wire data flow + tool attachments, run multi-turn workflows in a chat panel, and export the whole thing as a standalone Python file that depends only on agno. Inspired by community projects like **Agnobuilder**, FlowWeaver focuses on a single-engine runtime, declarative node-type definitions, and a friendly chat-driven creation surface.
 
+<p align="center">
+  <img src="./docs/images/image.png" alt="FlowWeaver canvas — visual workflow builder with chat panel" width="900" />
+</p>
+
 ## Features
 
 - **Visual orchestration** — React Flow canvas with 6 node kinds (`agent`, `ask`, `branch`, `flow`, `loop`, `tool`) covering executable, control-flow, compound, and tool-source shapes.
