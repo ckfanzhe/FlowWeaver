@@ -72,19 +72,19 @@ export function FlowForm({ nodeId }: { nodeId: string }) {
                       checked={!!value}
                       onChange={(e) => set(e.target.checked)}
                     />
-                    <span>{t('panel.condition.requiresConfirmationLabel')}</span>
+                    <span>{t('panel.branch.requiresConfirmationLabel')}</span>
                   </label>
                 )}
               </NodeDataField>
               <NodeDataField<string> nodeId={nodeId} path={['confirmationMessage']}>
                 {(value, set) => (
-                  <Field label={t('panel.condition.confirmationMessageLabel')}>
+                  <Field label={t('panel.branch.confirmationMessageLabel')}>
                     <input
                       type="text"
                       className="input text-xs"
                       value={value ?? ''}
                       onChange={(e) => set(e.target.value)}
-                      placeholder={t('panel.condition.confirmationMessagePlaceholder')}
+                      placeholder={t('panel.branch.confirmationMessagePlaceholder')}
                     />
                   </Field>
                 )}

@@ -118,18 +118,18 @@ export function LoopForm({ nodeId }: { nodeId: string }) {
                     checked={!!value}
                     onChange={(e) => set(e.target.checked)}
                   />
-                  <span>{t('panel.condition.requiresConfirmationLabel')}</span>
+                  <span>{t('panel.branch.requiresConfirmationLabel')}</span>
                 </label>
                 {value && (
                   <NodeDataField<string> nodeId={nodeId} path={['confirmationMessage']}>
                     {(msg, setMsg) => (
-                      <Field label={t('panel.condition.confirmationMessageLabel')}>
+                      <Field label={t('panel.branch.confirmationMessageLabel')}>
                         <input
                           type="text"
                           className="input text-xs"
                           value={msg ?? ''}
                           onChange={(e) => setMsg(e.target.value)}
-                          placeholder={t('panel.condition.confirmationMessagePlaceholder')}
+                          placeholder={t('panel.branch.confirmationMessagePlaceholder')}
                         />
                       </Field>
                     )}
