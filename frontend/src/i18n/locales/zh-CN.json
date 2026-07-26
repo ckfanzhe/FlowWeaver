@@ -247,6 +247,34 @@
       "presetHint": "选择一个内置工具集预设（wikipedia / tavily_search / duckduckgo / calculator / arxiv_search），或保持「无」以使用上方的自定义数据源。",
       "presetBadge": "工具预设：{name}"
     },
+    "knowledge": {
+      "name": "名称",
+      "namePlaceholder": "友好名称（留空则回退到节点 id）",
+      "maxResults": "每次检索的最大结果数",
+      "addKnowledgeToContext": "自动将检索到的内容注入到 agent 提示中",
+      "vectorDb": "向量库",
+      "embedder": "嵌入模型",
+      "lancedbUri": "LanceDb 目录",
+      "lancedbTableName": "表名",
+      "pgvectorDbUrl": "Postgres URL",
+      "pgvectorTableName": "表名",
+      "pgvectorSchema": "Schema",
+      "chromaPath": "Chroma 路径",
+      "chromaCollectionName": "集合名",
+      "chromaPersistentClient": "持久化客户端",
+      "openaiModel": "OpenAI 模型 id",
+      "openaiApiKey": "OpenAI API key",
+      "openaiBaseUrl": "OpenAI base URL",
+      "sentenceTransformersModel": "HuggingFace 模型 id",
+      "sentenceTransformersDimensions": "向量维度",
+      "cohereModel": "Cohere 模型 id",
+      "cohereApiKey": "Cohere API key",
+      "cohereInputType": "输入类型",
+      "apiKeyEnvFallback": "留空则使用 OPENAI_API_KEY / COHERE_API_KEY 环境变量",
+      "sources": "数据源",
+      "addSource": "添加数据源",
+      "sourceValuePlaceholder": "路径 / URL / 内联文本（type = {type}）"
+    },
     "toolPreset": {
       "bundled": "平台内置工具集 — 下方配置控制暴露哪些方法和构造参数。",
       "enabledMethods": "暴露的方法",
@@ -387,7 +415,8 @@
     "steps":       { "label": "Steps",          "description": "按顺序执行分支" },
     "loop":        { "label": "Loop",          "description": "重复执行最多 N 次" },
     "ask": { "label": "Ask",       "description": "暂停并询问用户" },
-    "tool":        { "label": "工具",           "description": "HTTP 请求、MCP 服务器、自定义 Python 函数，或内置工具集预设（wikipedia / tavily / duckduckgo / calculator / arxiv）" }
+    "tool":        { "label": "工具",           "description": "HTTP 请求、MCP 服务器、自定义 Python 函数，或内置工具集预设（wikipedia / tavily / duckduckgo / calculator / arxiv）" },
+    "knowledge":   { "label": "知识库",         "description": "RAG / 向量库数据源 — 通过 knowledge_attachment 边接入 agent 的 knowledge=… 参数" }
   },
   "templates": {
     "title": "从模板开始",

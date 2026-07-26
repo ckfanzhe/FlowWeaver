@@ -247,6 +247,34 @@
       "presetHint": "Pick a bundled toolkit preset (wikipedia / tavily_search / duckduckgo / calculator / arxiv_search), or leave as None to use a custom source above.",
       "presetBadge": "tool preset: {name}"
     },
+    "knowledge": {
+      "name": "Name",
+      "namePlaceholder": "Friendly name (falls back to node id)",
+      "maxResults": "Max results per search",
+      "addKnowledgeToContext": "Auto-inject retrieved chunks into the agent's prompt",
+      "vectorDb": "Vector DB",
+      "embedder": "Embedder",
+      "lancedbUri": "LanceDb directory",
+      "lancedbTableName": "Table name",
+      "pgvectorDbUrl": "Postgres URL",
+      "pgvectorTableName": "Table name",
+      "pgvectorSchema": "Schema",
+      "chromaPath": "Chroma path",
+      "chromaCollectionName": "Collection name",
+      "chromaPersistentClient": "Persistent client",
+      "openaiModel": "OpenAI model id",
+      "openaiApiKey": "OpenAI API key",
+      "openaiBaseUrl": "OpenAI base URL",
+      "sentenceTransformersModel": "HuggingFace model id",
+      "sentenceTransformersDimensions": "Dimensions",
+      "cohereModel": "Cohere model id",
+      "cohereApiKey": "Cohere API key",
+      "cohereInputType": "Input type",
+      "apiKeyEnvFallback": "Leave empty to use the OPENAI_API_KEY / COHERE_API_KEY env var",
+      "sources": "Sources",
+      "addSource": "Add source",
+      "sourceValuePlaceholder": "Path / URL / inline text (type = {type})"
+    },
     "toolPreset": {
       "bundled": "Bundled toolkit — config below controls which methods and constructor kwargs are exposed.",
       "enabledMethods": "Exposed methods",
@@ -411,7 +439,8 @@
     "steps":       { "label": "Steps",     "description": "Sequential pipeline of branches" },
     "loop":        { "label": "Loop",      "description": "Repeat a step up to N times" },
     "ask": { "label": "Ask",  "description": "Pause and ask user" },
-    "tool":        { "label": "Tool",      "description": "HTTP wrapper, MCP server, custom Python function, or bundled toolkit preset (wikipedia / tavily / duckduckgo / calculator / arxiv)" }
+    "tool":        { "label": "Tool",      "description": "HTTP wrapper, MCP server, custom Python function, or bundled toolkit preset (wikipedia / tavily / duckduckgo / calculator / arxiv)" },
+    "knowledge":   { "label": "Knowledge", "description": "RAG / vector DB source — wires into an agent's knowledge=… parameter via a knowledge_attachment edge" }
   },
   "templates": {
     "title": "Start from a template",

@@ -45,6 +45,11 @@ import { LoopForm } from '../LoopForm'
 // `HumanInputForm` renamed to `AskForm`.
 import { AskForm } from '../AskForm'
 import { ToolForm } from '../ToolForm'
+// : RAG / knowledge source. Parallel to `tool`/`tool_source`
+// — source node attached to an agent via a `knowledge_attachment`
+// edge. Form dispatches per-backend / per-embedder sub-forms based on
+// `cfg.vectorDb` and `cfg.embedder` discriminators.
+import { KnowledgeForm } from '../KnowledgeForm'
 
 /** Form-component contract — every entry satisfies this. */
 export type FormComponent = React.FC<{ nodeId: string }>
@@ -83,6 +88,13 @@ export const FORM_REGISTRY: Partial<Record<NodeType, FormComponent>> = {
   // the same `ToolForm` panel when preset is set, so no top-level
   // registry entry is needed.
   tool: ToolForm,
+  // : RAG / knowledge source. Flat form with
+  // `vectorDb` + `embedder` discriminators that pick which per-backend
+  // / per-embedder fields render below the picker. No preset
+  // discriminator — backends are config-driven (no manifest rows per
+  // backend), so adding a backend = adding a Literal member to the
+  // schema + a sub-form block here.
+  knowledge: KnowledgeForm,
 }
 
 /**

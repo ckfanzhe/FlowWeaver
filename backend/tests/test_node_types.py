@@ -267,14 +267,21 @@ class TestLiveManifestHasNoPresets:
     one-block manifest edit — see docs/node-types.md Recipe 1."""
 
     def test_live_manifest_contains_only_6_base_types(self):
+        """Test name kept for back-compat; the actual count is 7 after
+        the RAG knowledge node ([[gleaming-munching-grove]]) joined.
+        Renamed intent: the live manifest contains ONLY base types —
+        no preset entries (those collapsed into the `tool` node's
+        `preset` config discriminator)."""
         from app.core.node_types import NODE_TYPES
         # The 5 preset entries collapsed into a `preset` config
-        # discriminator on the single `tool` node. The manifest
-        # now only declares the 6 base node types; presets live in
+        # discriminator on the single `tool` node. The `knowledge`
+        # node (RAG) joined as a 7th base type in
+        # [[gleaming-munching-grove]]. The manifest now only declares
+        # the 7 base node types; presets live in
         # `app.core.strategies.tool.PRESET_REGISTRY`.
         expected = {
             "agent", "branch", "flow", "loop",
-            "ask", "tool",
+            "ask", "tool", "knowledge",
         }
         assert set(NODE_TYPES) == expected
 

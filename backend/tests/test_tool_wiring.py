@@ -360,8 +360,9 @@ class TestPresetRegistryToolkitSurface:
     def test_node_types_manifest_has_no_preset_entries(self):
         """Preset collapse: the 5 presets are no longer
         separate manifest entries — they're a config discriminator on
-        the unified `tool` node. `NODE_TYPES` has exactly 6 base
-        types."""
+        the unified `tool` node. `NODE_TYPES` has exactly 7 base
+        types (the 6 prior + `knowledge`, new in
+        [[gleaming-munching-grove]])."""
         from app.core.node_types import NODE_TYPES
 
         assert "wikipedia" not in NODE_TYPES
@@ -370,7 +371,7 @@ class TestPresetRegistryToolkitSurface:
         assert "calculator" not in NODE_TYPES
         assert "arxiv_search" not in NODE_TYPES
         assert set(NODE_TYPES) == {
-            "agent", "branch", "flow", "loop", "ask", "tool",
+            "agent", "branch", "flow", "loop", "ask", "tool", "knowledge",
         }
 
     def test_tool_strategy_resolves_to_toolstrategy(self):

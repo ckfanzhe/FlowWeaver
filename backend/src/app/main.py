@@ -441,7 +441,20 @@ async def node_types():
                 "capabilities": {
                     "compoundPass": spec.capabilities.compoundPass,
                     "isToolSource": spec.capabilities.isToolSource,
+                    # RAG / knowledge source — new in
+                    # [[gleaming-munching-grove]]. Knowledge nodes live in
+                    # `ctx.knowledge_objects` and are wired to an agent's
+                    # `knowledge=...` parameter by `_pass3_knowledge_wiring`,
+                    # parallel to `isToolSource` for tool attachments.
+                    "isKnowledgeSource": spec.capabilities.isKnowledgeSource,
                     "needsToolWiring": spec.capabilities.needsToolWiring,
+                    # RAG / knowledge — the agent side's "needs wiring"
+                    # flag. Currently always false — the runtime sets
+                    # `agent.knowledge = kb` post-build via
+                    # `_pass3_knowledge_wiring`, no build-time kwarg
+                    # needed. Surfaced here so the schema's full shape
+                    # is visible to consumers.
+                    "needsKnowledgeWiring": spec.capabilities.needsKnowledgeWiring,
                     "skipPass1": spec.capabilities.skipPass1,
                     "stepWrapper": spec.capabilities.stepWrapper,
                 },

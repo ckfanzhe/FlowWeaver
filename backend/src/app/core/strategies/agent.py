@@ -267,6 +267,23 @@ class AgentStrategy(NodeStrategy):
         extra_kwargs.append("    add_history_to_context=True,")
         num_history_runs = cfg.get("numHistoryRuns") or 5
         extra_kwargs.append(f"    num_history_runs={int(num_history_runs)},")
+        # RAG / knowledge wiring — emit `search_knowledge=True` always
+        # when a knowledge is attached (matches runtime behavior where
+        # pass 3b sets `agent.knowledge = kb`; the agent gets a
+        # `search_knowledge` tool it can invoke). `knowledge=<ref>_kb`
+        # is set by `_pass3_knowledge_wiring_source` as a separate line
+        # (parallel to how `tools=` is set by pass 3 source — see the
+        # `tools=[...]` comment below). `add_knowledge_to_context=True`
+        # propagates from the knowledge node's cfg when the user opted
+        # in (auto-inject retrieved chunks into the prompt instead of
+        # relying on the agent to call `search_knowledge`).
+        knowledge_refs = ctx.ir.knowledge_attachments.get(nid) or []
+        if knowledge_refs:
+            extra_kwargs.append("    search_knowledge=True,")
+            kb_node = ctx.nodes_by_id.get(knowledge_refs[0]) or {}
+            kb_cfg = (kb_node.get("data") or {}).get("config") or {}
+            if kb_cfg.get("addKnowledgeToContext"):
+                extra_kwargs.append("    add_knowledge_to_context=True,")
         if cfg.get("systemMessage"):
             extra_kwargs.append(f"    system_message={repr_instructions(cfg['systemMessage'])},")
         if cfg.get("reasoning"):

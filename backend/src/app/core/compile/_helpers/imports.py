@@ -8,6 +8,9 @@ Only emit what the workflow actually uses:
     `source` discriminator / `ask`) is in the graph.
   - `MCPTools` — only when a `tool` node with `config.source == 'mcp'`
     exists.
+  - `Knowledge` + `LanceDb` / `PgVector` / `ChromaDb` + matching
+    embedders — only when a `knowledge` node is in the graph (see
+    [[gleaming-munching-grove]]).
   - `Parallel` / `Router` / `Condition` / `Loop` — only when those
     compound types appear.
 
@@ -85,4 +88,10 @@ def collect_imports(nodes_by_id: dict[str, dict], has_http: bool) -> list[str]:
         imports.append("from agno.workflow.condition import Condition")
     if has_loop:
         imports.append("from agno.workflow.loop import Loop")
+    # RAG / knowledge — gate on `vectorDb` / `embedder` discriminators
+    # in each `knowledge` node's config so we don't pull in deps the
+    # user didn't pick. `knowledge_expr.required_imports` knows the
+    # rules, so we delegate rather than re-implement them here.
+    from .knowledge_expr import required_imports
+    imports.extend(required_imports(nodes_by_id))
     return imports

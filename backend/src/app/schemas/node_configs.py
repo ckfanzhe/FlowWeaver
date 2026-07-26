@@ -562,6 +562,53 @@ class ToolFunction(BaseModel):
         ),
     )
 
+class KnowledgeSource(BaseModel):
+    """One content source for a `knowledge` node — passed to
+    `Knowledge.insert(path=...)` / `insert(url=...)` /
+    `insert(text_content=...)` at content-load time.
+
+    The actual `kb.insert(...)` call is NOT emitted by the workflow
+    export — the user runs it themselves (or via a future ingestion
+    endpoint). This config records the WHAT (which path / URL / text
+    blob the user wants indexed) so the platform can render it on the
+    canvas and round-trip it through save/load without losing the
+    user's intent. See plan [[gleaming-munching-grove]] for the
+    "export-self-managed" decision rationale.
+
+    `type` mirrors agno's `Knowledge.insert(...)` overloads:
+      - `'path'` → `kb.insert(path=<value>)` (file or glob on local FS)
+      - `'url'`  → `kb.insert(url=<value>)`  (HTTP / web URL)
+      - `'text'` → `kb.insert(text_content=<value>)` (inline string)
+
+    `reader` is an advanced override (e.g. `"agno.knowledge.reader.pdf_reader.PDFReader"`).
+    Leave empty for agno's `ReaderFactory` to auto-pick based on file
+    extension / MIME type.
+    """
+    model_config = _BASE_CONFIG
+
+    type: Literal["path", "url", "text"] = Field(
+        description=(
+            "Source shape — `'path'` for file system paths, `'url'` for "
+            "HTTP/web URLs, `'text'` for inline strings. Mirrors agno's "
+            "`Knowledge.insert(...)` overloads."
+        ),
+    )
+    value: str = Field(
+        default="",
+        description=(
+            "The actual path / URL / inline text. Empty string is "
+            "preserved (the user might be mid-edit)."
+        ),
+    )
+    reader: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional agno reader class path (advanced). Leave empty to "
+            "let agno's `ReaderFactory` pick a reader based on file "
+            "extension / MIME type."
+        ),
+    )
+
 class BranchTarget(BaseModel):
     model_config = _BASE_CONFIG
 
@@ -1058,6 +1105,268 @@ class AskConfig(BaseModel):
         ),
     )
 
+class KnowledgeNodeConfig(BaseModel):
+    """A `knowledge` node's editable fields — mirrors
+    `agno.knowledge.Knowledge(vector_db=<VectorDb>, max_results=N)`
+    directly.
+
+    The two top-level discriminators pick the concrete vector DB /
+    embedder constructor at runtime:
+
+      - `vectorDb` → one of `'lancedb'` (default, file-based, zero-
+        external-deps), `'pgvector'` (self-hosted Postgres + pgvector),
+        `'chroma'` (self-hosted Chroma). The matching per-backend
+        fields (e.g. `lancedbUri`, `pgvectorDbUrl`) are read only when
+        that backend is selected; other backends' fields are silently
+        ignored (matches the F7 ToolNodeConfig flat-discriminator
+        pattern at line 292).
+      - `embedder` → one of `'openai'` (default), `'sentence_transformers'`
+        (offline, no API key, downloads model on first use), `'cohere'`.
+
+    Optional deps are NOT installed by default — the runtime emits
+    a clear `pip install <dep>` error if the user picked a backend /
+    embedder whose package is missing. The lean default install is
+    preserved.
+
+    `sources[]` records what the user wants indexed. The export emits
+    only the `Knowledge(...)` constructor; users call
+    `kb_<nid>.insert(path=...)` / `insert(url=...)` /
+    `insert(text_content=...)` themselves.
+
+    Attach to an agent via `kind: 'knowledge_attachment'` edges. Agno
+    takes a single `Knowledge` per agent, so `connection_rules.json`
+    enforces `max_incoming: 1` on the agent side.
+    """
+    model_config = _BASE_CONFIG
+
+    # ── identity ────────────────────────────────────────────────
+    name: str = Field(
+        default="",
+        description=(
+            "Friendly name for this knowledge base. Becomes `Knowledge.name` "
+            "and is also the variable suffix (`kb_<nid>`) in the exported "
+            "Python module. Empty = falls back to the node id at export time."
+        ),
+    )
+    description: str = Field(
+        default="",
+        description=(
+            "Free-text description. Becomes `Knowledge.description`. "
+            "Empty = omitted from the constructor."
+        ),
+    )
+    max_results: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        alias="maxResults",
+        description=(
+            "Max number of documents returned per `knowledge.search()` call. "
+            "1..100. Default 10. Maps to `Knowledge.max_results`."
+        ),
+    )
+    add_knowledge_to_context: bool = Field(
+        default=False,
+        alias="addKnowledgeToContext",
+        description=(
+            "If true, retrieved chunks are AUTO-INJECTED into the agent's "
+            "prompt on every turn. If false (default), the agent calls "
+            "`search_knowledge` explicitly as a tool. Maps to "
+            "`Agent.add_knowledge_to_context`."
+        ),
+    )
+
+    # ── vector DB discriminator ─────────────────────────────────
+    vector_db: Literal["lancedb", "pgvector", "chroma"] = Field(
+        default="lancedb",
+        alias="vectorDb",
+        description=(
+            "Vector DB backend. `'lancedb'` (default, file-based at "
+            "`lancedbUri`, no external service), `'pgvector'` (Postgres + "
+            "pgvector extension, requires `pgvectorDbUrl`), `'chroma'` "
+            "(self-hosted Chroma, persistent at `chromaPath`). Optional "
+            "deps — the runtime surfaces a `pip install <dep>` error if "
+            "the chosen backend's package is missing."
+        ),
+    )
+    # ── lancedb-only (effective when vectorDb='lancedb') ──────
+    lancedb_uri: str = Field(
+        default="/tmp/lancedb",
+        alias="lancedbUri",
+        description=(
+            "LanceDb directory path (file-based). Maps to "
+            "`LanceDb(uri=...)`. Default `/tmp/lancedb`."
+        ),
+    )
+    lancedb_table_name: str = Field(
+        default="agno_kb",
+        alias="lancedbTableName",
+        description=(
+            "LanceDb table name. Maps to `LanceDb(table_name=...)`. "
+            "Default `agno_kb`."
+        ),
+    )
+    # ── pgvector-only (effective when vectorDb='pgvector') ─────
+    pgvector_db_url: str = Field(
+        default="",
+        alias="pgvectorDbUrl",
+        description=(
+            "Postgres connection URL (e.g. "
+            "`postgresql://user:pass@host:5432/db`). Maps to "
+            "`PgVector(db_url=...)`. Empty + vectorDb='pgvector' raises "
+            "at compile time."
+        ),
+    )
+    pgvector_table_name: str = Field(
+        default="agno_kb",
+        alias="pgvectorTableName",
+        description=(
+            "pgvector table name. Maps to `PgVector(table_name=...)`. "
+            "Default `agno_kb`."
+        ),
+    )
+    pgvector_schema: str = Field(
+        default="ai",
+        alias="pgvectorSchema",
+        description=(
+            "Postgres schema name. Maps to `PgVector(schema=...)`. "
+            "Default `ai`."
+        ),
+    )
+    # ── chroma-only (effective when vectorDb='chroma') ─────────
+    chroma_path: str = Field(
+        default="./chroma_db",
+        alias="chromaPath",
+        description=(
+            "Chroma persistent directory path. Maps to "
+            "`ChromaDb(path=...)`. Default `./chroma_db`."
+        ),
+    )
+    chroma_collection_name: str = Field(
+        default="agno_kb",
+        alias="chromaCollectionName",
+        description=(
+            "Chroma collection name. Maps to "
+            "`ChromaDb(collection_name=...)`. Default `agno_kb`."
+        ),
+    )
+    chroma_persistent_client: bool = Field(
+        default=True,
+        alias="chromaPersistentClient",
+        description=(
+            "Use Chroma's persistent client (data survives process exit). "
+            "Maps to `ChromaDb(persistent_client=...)`. Default true."
+        ),
+    )
+
+    # ── embedder discriminator ──────────────────────────────────
+    embedder: Literal["openai", "sentence_transformers", "cohere"] = Field(
+        default="openai",
+        description=(
+            "Embedder backend. `'openai'` (default, OpenAI / Azure-"
+            "compatible endpoint), `'sentence_transformers'` (offline, no "
+            "API key, downloads model on first use), `'cohere'`."
+        ),
+    )
+    # ── openai-only (effective when embedder='openai') ─────────
+    openai_model: str = Field(
+        default="text-embedding-3-small",
+        alias="openaiModel",
+        description=(
+            "OpenAI embedding model id. Maps to "
+            "`OpenAIEmbedder(id=...)`. Default `text-embedding-3-small`."
+        ),
+    )
+    openai_api_key: Optional[str] = Field(
+        default=None,
+        alias="openaiApiKey",
+        description=(
+            "OpenAI API key. Inline value wins over `OPENAI_API_KEY` env "
+            "var. None / empty = fall through to env. Maps to "
+            "`OpenAIEmbedder(api_key=...)`."
+        ),
+    )
+    openai_base_url: Optional[str] = Field(
+        default=None,
+        alias="openaiBaseUrl",
+        description=(
+            "Custom OpenAI-compatible base URL (Azure / self-hosted / "
+            "proxy). Empty = provider default. Maps to "
+            "`OpenAIEmbedder(base_url=...)`."
+        ),
+    )
+    openai_dimensions: Optional[int] = Field(
+        default=None,
+        alias="openaiDimensions",
+        description=(
+            "Override embedding dimensions. None = let `OpenAIEmbedder` "
+            "default (3072 for `text-embedding-3-large`, 1536 otherwise). "
+            "Maps to `OpenAIEmbedder(dimensions=...)`."
+        ),
+    )
+    # ── sentence_transformers-only ─────────────────────────────
+    sentence_transformers_model: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        alias="sentenceTransformersModel",
+        description=(
+            "HuggingFace model id. Maps to "
+            "`SentenceTransformerEmbedder(model=...)`. Default "
+            "`sentence-transformers/all-MiniLM-L6-v2` (384-dim, ~80MB "
+            "download on first use)."
+        ),
+    )
+    sentence_transformers_dimensions: int = Field(
+        default=384,
+        alias="sentenceTransformersDimensions",
+        description=(
+            "Vector dimensions produced by the chosen model. Must match "
+            "the model's native dim (e.g. 384 for all-MiniLM-L6-v2, "
+            "768 for all-mpnet-base-v2). Maps to "
+            "`SentenceTransformerEmbedder(dimensions=...)`."
+        ),
+    )
+    # ── cohere-only ────────────────────────────────────────────
+    cohere_model: str = Field(
+        default="embed-english-v3.0",
+        alias="cohereModel",
+        description=(
+            "Cohere embedding model id. Maps to "
+            "`CohereEmbedder(model=...)`. Default `embed-english-v3.0`."
+        ),
+    )
+    cohere_api_key: Optional[str] = Field(
+        default=None,
+        alias="cohereApiKey",
+        description=(
+            "Cohere API key. Inline value wins over `COHERE_API_KEY` env "
+            "var. None / empty = fall through to env. Maps to "
+            "`CohereEmbedder(api_key=...)`."
+        ),
+    )
+    cohere_input_type: str = Field(
+        default="search_query",
+        alias="cohereInputType",
+        description=(
+            "Cohere input type (`'search_query'` for queries, "
+            "`'search_document'` for indexed content). Maps to "
+            "`CohereEmbedder(input_type=...)`. Default `search_query`."
+        ),
+    )
+
+    # ── sources — what the user wants indexed ──────────────────
+    sources: list[KnowledgeSource] = Field(
+        default_factory=list,
+        description=(
+            "Content sources (paths / URLs / inline text blobs) the user "
+            "wants indexed into this knowledge base. The export emits "
+            "only the `Knowledge(...)` constructor; users call "
+            "`kb_<nid>.insert(path=...)` / `insert(url=...)` / "
+            "`insert(text_content=...)` themselves. Empty list = a kb "
+            "with nothing indexed yet (the agent's search_knowledge "
+            "calls return zero results until the user ingests content)."
+        ),
+    )
+
 # ─────────────────────────────────────────────────────────────────
 # Type → schema dispatch
 # ─────────────────────────────────────────────────────────────────
@@ -1079,6 +1388,12 @@ NodeConfig = Annotated[
         FlowNodeConfig,
         LoopNodeConfig,
         AskConfig,
+        # New node type — RAG / knowledge source. Parallel to
+        # `ToolNodeConfig`: a knowledge_source node (kind: "knowledge_source")
+        # that lives in `ctx.knowledge_objects` and is wired to an agent
+        # via `kind: "knowledge_attachment"` edges. See plan
+        # [[gleaming-munching-grove]] for the architectural mirror.
+        KnowledgeNodeConfig,
     ],
     Field(discriminator="__discriminator__"),
 ]
@@ -1132,6 +1447,17 @@ class LoopNodeConfigLLM(LoopNodeConfig):
 class AskConfigLLM(AskConfig):
     model_config = _LLM_WRITE_CONFIG
 
+class KnowledgeNodeConfigLLM(KnowledgeNodeConfig):
+    """Strict sibling of `KnowledgeNodeConfig` for the LLM write path.
+
+    Same shape, same aliases, same validators — only `extra="forbid"`
+    (via `_LLM_WRITE_CONFIG`) differs. The LLM tool surface uses this
+    to surface unknown-field errors as typed `Issue`s with did-you-mean
+    hints. The lax original (`KnowledgeNodeConfig`) keeps read-time
+    `extra="ignore"` so saved workflows load even when the schema moves on.
+    """
+    model_config = _LLM_WRITE_CONFIG
+
 # Node-type → strict sibling class. Replaces the lazy dynamic registry.
 # Keyed by the `configSchemaRef` values in `shared/nodes.manifest.json`.
 _NODE_TYPE_TO_STRICT_SCHEMA: dict[str, type[BaseModel]] = {
@@ -1145,6 +1471,9 @@ _NODE_TYPE_TO_STRICT_SCHEMA: dict[str, type[BaseModel]] = {
     "flow": FlowNodeConfigLLM,
     "loop": LoopNodeConfigLLM,
     "ask": AskConfigLLM,
+    # RAG / knowledge source. No legacy alias — knowledge is a fresh
+    # feature introduced in [[gleaming-munching-grove]].
+    "knowledge": KnowledgeNodeConfigLLM,
 }
 
 # Eagerly populate the module attribute on first import so static
@@ -1229,6 +1558,9 @@ __all__ = [
     "ToolNodeConfig",
     "ParamSchema",
     "ToolFunction",
+    # RAG / knowledge support — see plan [[gleaming-munching-grove]].
+    "KnowledgeSource",
+    "KnowledgeNodeConfig",
     "BranchTarget",
     "RouterNodeConfig",
     "FlowNodeConfig",
@@ -1244,6 +1576,7 @@ __all__ = [
     "FlowNodeConfigLLM",
     "LoopNodeConfigLLM",
     "AskConfigLLM",
+    "KnowledgeNodeConfigLLM",
     # Write-time strict sibling accessors
     "get_strict_schema",
     "_did_you_mean",

@@ -5,8 +5,8 @@
  * Regenerate with:  python scripts/generate_node_configs_ts.py
  * CI check:         python scripts/check_node_configs_consistency.py
  *
- * row D : the per-node TS interfaces used to
- * live in `workflow.ts:99-330` as a hand mirror of the Pydantic
+ * The per-node TS interfaces used to live in
+ * `workflow.ts:99-330` as a hand mirror of the Pydantic
  * schemas. Drift was easy. This file is now codegen — adding a
  * field on the Python side requires re-running this script and
  * the TS picks it up. Both sides evolve together.
@@ -72,6 +72,7 @@ export interface AgentNodeConfig {
   retries: number;
   delayBetweenRetries: number;
   toolCallLimit?: number | null;
+  numHistoryRuns?: number | null;
   addDatetimeToContext: boolean;
   parserModel?: ModelConfig | null;
   parserModelPrompt: string;
@@ -132,6 +133,39 @@ export interface AskConfig {
   choices: string[];
 }
 
+export interface KnowledgeSource {
+  type: 'path' | 'url' | 'text';
+  value: string;
+  reader?: string | null;
+}
+
+export interface KnowledgeNodeConfig {
+  name: string;
+  description: string;
+  maxResults: number;
+  addKnowledgeToContext: boolean;
+  vectorDb: 'lancedb' | 'pgvector' | 'chroma';
+  lancedbUri: string;
+  lancedbTableName: string;
+  pgvectorDbUrl: string;
+  pgvectorTableName: string;
+  pgvectorSchema: string;
+  chromaPath: string;
+  chromaCollectionName: string;
+  chromaPersistentClient: boolean;
+  embedder: 'openai' | 'sentence_transformers' | 'cohere';
+  openaiModel: string;
+  openaiApiKey?: string | null;
+  openaiBaseUrl?: string | null;
+  openaiDimensions?: number | null;
+  sentenceTransformersModel: string;
+  sentenceTransformersDimensions: number;
+  cohereModel: string;
+  cohereApiKey?: string | null;
+  cohereInputType: string;
+  sources: KnowledgeSource[];
+}
+
 export type NodeConfig =
     AgentNodeConfig
   | ToolNodeConfig
@@ -139,4 +173,5 @@ export type NodeConfig =
   | FlowNodeConfig
   | LoopNodeConfig
   | AskConfig
+  | KnowledgeNodeConfig
 ;

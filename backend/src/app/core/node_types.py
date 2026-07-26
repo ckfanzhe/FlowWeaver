@@ -134,8 +134,17 @@ class _CapabilitiesSpec(BaseModel):
                      router=40.
     `isToolSource` = the node's value lives in `ctx.tool_objects` and
                      is wired into agents by `_pass3_tool_wiring`.
+    `isKnowledgeSource` = the node's value lives in `ctx.knowledge_objects`
+                     and is wired into agents' `knowledge=...` by
+                     `_pass3_knowledge_wiring`. New in
+                     [[gleaming-munching-grove]].
     `needsToolWiring` = an Agent node that should have its `tools=[...]`
                         replaced with attached tool-source nodes in pass 3.
+    `needsKnowledgeWiring` = an Agent node that should have its `knowledge=...`
+                        replaced with attached knowledge-source nodes in
+                        pass 3b. Always false in v1 — the runtime sets
+                        `agent.knowledge = kb` post-build, and the
+                        source-emission pass emits the wiring line.
     `skipPass1`    = compound types whose pass-1 emission is empty
                      (parallel, loop) skip pass 1 entirely so the
                      generated file's section headers stay clean.
@@ -147,7 +156,9 @@ class _CapabilitiesSpec(BaseModel):
     model_config = ConfigDict(extra="ignore")
     compoundPass: Optional[int] = None
     isToolSource: bool = False
+    isKnowledgeSource: bool = False
     needsToolWiring: bool = False
+    needsKnowledgeWiring: bool = False
     skipPass1: bool = False
     stepWrapper: Literal["agent", "ask", "none"] = "none"
 
@@ -199,9 +210,11 @@ class _NodeEntryV2(BaseModel):
     `overrides`, `capabilities`, `ui`.
 
     `kind` is the semantic role (`executable` | `compound` |
-    `tool_source` | `control_flow`) used by the strategy registry;
-    `category` is the visual group label (Core/Search/Data/Connectors).
-    `control_flow` was added for the `ask` node (formerly `executable`).
+    `tool_source` | `knowledge_source` | `control_flow`) used by the
+    strategy registry; `category` is the visual group label
+    (Core/Search/Data/Connectors). `control_flow` was added for the
+    `ask` node (formerly `executable`). `knowledge_source` was added
+    for the `knowledge` node — RAG sources parallel to `tool_source`.
 
     `extends` enables preset inheritance: a preset's resolved spec is
     built by deep-merging the parent's resolved spec + the preset's own
@@ -210,7 +223,9 @@ class _NodeEntryV2(BaseModel):
     are behavior, not metadata.
     """
     model_config = ConfigDict(extra="ignore")
-    kind: Literal["executable", "compound", "tool_source", "control_flow"]
+    kind: Literal[
+        "executable", "compound", "tool_source", "knowledge_source", "control_flow"
+    ]
     extends: Optional[str] = None
     overrides: _OverridesSpec = Field(default_factory=_OverridesSpec)
     category: str = ""
@@ -399,10 +414,11 @@ def _v1_to_v2_entry(name: str, entry: _NodeEntryV1) -> _NodeEntryV2:
     these need a real `Step` wrapper at runtime, so `stepWrapper` is
     set explicitly. Other types default to `"none"`.
     """
-    kind = entry.category if entry.category in {"executable", "compound", "tool_source", "control_flow"} else "executable"
+    kind = entry.category if entry.category in {"executable", "compound", "tool_source", "knowledge_source", "control_flow"} else "executable"
     capabilities = _CapabilitiesSpec(
         compoundPass=entry.emitter.pass2Order if entry.emitter.pass2 else None,
         isToolSource=(kind == "tool_source"),
+        isKnowledgeSource=(kind == "knowledge_source"),
         needsToolWiring=entry.emitter.needsToolWiring,
         skipPass1=entry.emitter.skipPass1,
         stepWrapper=(

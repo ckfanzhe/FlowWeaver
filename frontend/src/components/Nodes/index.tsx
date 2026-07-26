@@ -32,6 +32,7 @@ import type {
   AskConfig,
   BranchNodeConfig,
   FlowNodeConfig,
+  KnowledgeNodeConfig,
   LoopNodeConfig,
   ToolNodeConfig,
 } from '../../types/workflow'
@@ -325,6 +326,72 @@ export function ToolNode({ id, data, selected }: NodeProps) {
 // but a dedicated component per preset is no longer needed.
 // ─────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────
+// Knowledge — : RAG / vector DB source.
+// Parallel to `tool`/`tool_source` architecturally. `hasInput={false}`
+// (no dataflow input handle) because knowledge nodes are wired via
+// `knowledge_attachment` edges only — they're not in the workflow's
+// dataflow topology.
+//
+// The body renders three summary badges so the user can tell at a
+// glance what's configured:
+//   1. Vector DB kind + table name (e.g. "lancedb · agno_kb")
+//   2. Embedder kind + model id (e.g. "openai · text-embedding-3-small")
+//   3. Source count badge (e.g. "3 source(s)" — paths / URLs / text)
+// `addKnowledgeToContext` is surfaced as a small "→ auto-inject" hint
+// when true, so the user knows the agent will see retrieved chunks
+// without explicitly calling search_knowledge.
+// ─────────────────────────────────────────────────────────────────
+export function KnowledgeNode({ id, data, selected }: NodeProps) {
+  const bag = data as unknown as DataBag
+  const cfg = getConfig<KnowledgeNodeConfig>(bag)
+  const vectorDb = cfg.vectorDb ?? 'lancedb'
+  const embedder = cfg.embedder ?? 'openai'
+  const sources = cfg.sources ?? []
+  // Surface the table name depending on the chosen backend so the
+  // user can spot which table/file is being used without opening
+  // the property panel.
+  const tableLabel = (() => {
+    if (vectorDb === 'lancedb') return cfg.lancedbTableName || 'agno_kb'
+    if (vectorDb === 'pgvector') return cfg.pgvectorTableName || 'agno_kb'
+    if (vectorDb === 'chroma') return cfg.chromaCollectionName || 'agno_kb'
+    return ''
+  })()
+  // Same for embedder model id — pick the field that matches the
+  // chosen embedder so the user sees what they configured.
+  const embedderLabel = (() => {
+    if (embedder === 'openai') return cfg.openaiModel || 'text-embedding-3-small'
+    if (embedder === 'sentence_transformers')
+      return (cfg.sentenceTransformersModel || 'sentence-transformers/all-MiniLM-L6-v2')
+        .split('/')
+        .pop()
+    if (embedder === 'cohere') return cfg.cohereModel || 'embed-english-v3.0'
+    return ''
+  })()
+  return (
+    <BaseNode type="knowledge" label={bag?.label} selected={useIsSelected(id, selected)} nodeId={id} hasInput={false}>
+      <div className="font-mono text-[10px] leading-relaxed">
+        <div className="opacity-70">
+          <span className="font-semibold">{vectorDb}</span>
+          {tableLabel ? <span className="opacity-60"> · {tableLabel}</span> : null}
+        </div>
+        <div className="opacity-70 mt-0.5">
+          <span className="font-semibold">{embedder}</span>
+          {embedderLabel ? <span className="opacity-60"> · {embedderLabel}</span> : null}
+        </div>
+        <div className="mt-1 opacity-60">
+          {sources.length === 0
+            ? 'no sources yet'
+            : `${sources.length} source${sources.length === 1 ? '' : 's'}`}
+        </div>
+        {cfg.addKnowledgeToContext && (
+          <div className="mt-1 opacity-60">→ auto-inject</div>
+        )}
+      </div>
+    </BaseNode>
+  )
+}
+
 // Registry — map node type -> component for React Flow.
 // React Flow renders a plain unstyled rectangle for any node type
 // absent from this map. After the node-type collapse: 14 → 6
@@ -345,4 +412,11 @@ export const customNodeTypes: NodeTypes = {
   // : the same ToolNode body renders for the
   // 5 collapsed preset types via the `preset` config discriminator.
   tool: ToolNode,
+  // : RAG / knowledge source.
+  // `hasInput={false}` — knowledge nodes are NOT in the workflow's
+  // dataflow topology; they're source nodes attached to agents via
+  // `knowledge_attachment` edges. Same handle pattern as `ToolNode`.
+  // The body shows: vector DB kind + table name, embedder kind +
+  // model id, source count badge.
+  knowledge: KnowledgeNode,
 }

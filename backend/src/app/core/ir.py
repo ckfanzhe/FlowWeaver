@@ -179,6 +179,19 @@ class WorkflowIR:
     # the only signal.
     tool_attachments: dict[str, list[str]] = field(default_factory=dict)
 
+    # RAG / knowledge — per-agent → knowledge-node references derived
+    # from `kind="knowledge_attachment"` edges. Mirrors the
+    # `tool_attachments` shape but for the `knowledge=...` parameter
+    # (NOT `tools=[...]`). Connection rule `max_incoming: 1` per
+    # agent (see `shared/connection_rules.json`'s
+    # `edge_kinds.knowledge_attachment.rules.agent.max_incoming`) keeps
+    # the bucket at length ≤ 1 per agent_id; the runtime + generator
+    # still treat it as a list for symmetry with `tool_attachments`.
+    # See plan [[gleaming-munching-grove]] for the architectural
+    # mirror rationale. No legacy `cfg.knowledgeRef` shim — RAG is a
+    # fresh feature, no pre-migration workflows to back-fill.
+    knowledge_attachments: dict[str, list[str]] = field(default_factory=dict)
+
     # ─────────────────────────────────────────────────────────────
     # Convenience queries
     # ─────────────────────────────────────────────────────────────
@@ -379,6 +392,11 @@ def build_ir(nodes: Iterable[dict | Node], edges: Iterable[dict]) -> WorkflowIR:
     # Default `None` already mapped to "dataflow" by `split_edges_by_kind`.
     dataflow_edges = by_kind.get("dataflow") or []
     tool_edges = by_kind.get("tool_attachment") or []
+    # RAG / knowledge — mirrors `tool_edges` but for the
+    # `knowledge_attachment` edge kind. Same shape, same dedup
+    # semantics, but consumed in `knowledge_attachments` (parallel to
+    # `tool_attachments`). See plan [[gleaming-munching-grove]].
+    knowledge_edges = by_kind.get("knowledge_attachment") or []
 
     node_map_raw, outgoing_raw, incoming_raw = build_adjacency(nodes, dataflow_edges)
 
@@ -504,6 +522,29 @@ def build_ir(nodes: Iterable[dict | Node], edges: Iterable[dict]) -> WorkflowIR:
                     tool_attachments.setdefault(agent_id, []).append(ref)
                     existing.add(ref)
 
+    # knowledge_attachments (RAG ): per-agent → knowledge-node
+    # ids derived from `kind=knowledge_attachment` edges. Connection
+    # rule `max_incoming: 1` per agent keeps each bucket at length
+    # ≤ 1, but the IR still stores a list for shape symmetry with
+    # `tool_attachments` (consumers don't have to special-case single-
+    # vs list-of-one). No back-compat cfg fallback — RAG is fresh,
+    # no legacy workflows to upgrade.
+    knowledge_attachments: dict[str, list[str]] = {}
+    if agent_ids:
+        for e in knowledge_edges:
+            tgt = e.get("target") if isinstance(e, dict) else e.target
+            src = e.get("source") if isinstance(e, dict) else e.source
+            if tgt not in agent_ids:
+                continue
+            if src not in ir_nodes:
+                # Dangling knowledge-edge — the connection validator
+                # already rejects these on save; we silently drop here
+                # so the IR builder is robust.
+                continue
+            bucket = knowledge_attachments.setdefault(tgt, [])
+            if src not in bucket:
+                bucket.append(src)
+
     return WorkflowIR(
         node_map=ir_nodes,
         outgoing=outgoing_raw,
@@ -516,4 +557,5 @@ def build_ir(nodes: Iterable[dict | Node], edges: Iterable[dict]) -> WorkflowIR:
         nested_children=frozenset(nested),
         tool_refs=tool_refs,
         tool_attachments=tool_attachments,
+        knowledge_attachments=knowledge_attachments,
     )

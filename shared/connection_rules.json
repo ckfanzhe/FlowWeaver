@@ -12,6 +12,9 @@
     ],
     "tool_source": [
       "tool"
+    ],
+    "knowledge_source": [
+      "knowledge"
     ]
   },
   "rules": {
@@ -66,6 +69,15 @@
       "min_outgoing": 0,
       "min_incoming": 0,
       "max_incoming": 0
+    },
+    "knowledge": {
+      "_doc_": "knowledge_source rule: no dataflow edges in either direction — knowledge is wired to agents via `knowledge_attachment` edges only (mirrors `rules.tool`). The `vectorDb` / `embedder` discriminators are runtime / config concerns, not connection-semantic ones.",
+      "allowed_source_types": [],
+      "allowed_target_types": [],
+      "max_outgoing": 0,
+      "min_outgoing": 0,
+      "min_incoming": 0,
+      "max_incoming": 0
     }
   },
   "edge_kinds": {
@@ -88,6 +100,31 @@
             "agent"
           ],
           "max_outgoing": null,
+          "min_outgoing": 0,
+          "min_incoming": 0,
+          "max_incoming": 0
+        }
+      }
+    },
+    "knowledge_attachment": {
+      "_doc_": "knowledge_attachment edge — parallels `tool_attachment` but wires a `knowledge` source node into an agent's `knowledge=...` parameter (NOT `tools=...`). Agno's `Agent(knowledge=...)` accepts a single Knowledge per agent, so the agent side caps incoming knowledge_attachment edges at 1 (`max_incoming: 1`). The `vectorDb` / `embedder` discriminators are runtime concerns — all knowledge source variants share the same rule.",
+      "rules": {
+        "agent": {
+          "_doc_": "An agent can be the TARGET of a knowledge_attachment edge (it consumes the attached Knowledge). `max_incoming: 1` enforces agno's single-Knowledge-per-agent constraint — a second knowledge node wired into the same agent triggers a `tooManyIncoming` validation error.",
+          "allowed_source_types": "@knowledge_source",
+          "allowed_target_types": [],
+          "max_outgoing": 0,
+          "min_outgoing": 0,
+          "max_incoming": 1,
+          "min_incoming": 0
+        },
+        "knowledge": {
+          "_doc_": "A `knowledge` node can be SOURCED into exactly one agent (`max_outgoing: 1`). Combined with the agent-side `max_incoming: 1`, this gives the strict 1-to-1 attachment shape that matches agno's API. The `vectorDb` / `embedder` discriminators don't change the connection semantics.",
+          "allowed_source_types": [],
+          "allowed_target_types": [
+            "agent"
+          ],
+          "max_outgoing": 1,
           "min_outgoing": 0,
           "min_incoming": 0,
           "max_incoming": 0

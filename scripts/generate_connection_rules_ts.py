@@ -192,21 +192,36 @@ def generate(raw: dict) -> str:
     lines.append("};")
     lines.append("")
 
-    # TOOL_ATTACHMENT_RULES.
-    ta_block = (edge_kinds_raw.get("tool_attachment") or {}).get("rules") or {}
-    ta_keys = sorted(k for k in ta_block if not _is_doc_key(k))
-    lines.append(
-        "/** Tool-attachment rule table — `edge_kinds.tool_attachment.rules` "
-        "in the JSON. */"
-    )
-    lines.append(
-        "export const TOOL_ATTACHMENT_RULES: Readonly<Record<NodeType, ConnectionRule>> = {"
-    )
-    for type_name in ta_keys:
-        spec = ta_block[type_name]
-        lines.append(f"  {json.dumps(type_name)}: {_render_rule(spec, groups_raw)},")
-    lines.append("};")
-    lines.append("")
+    # Per-edge-kind rule tables — one frozen `*_RULES` constant per
+    # entry under `edge_kinds` in the JSON. Generalized from the prior
+    # hardcoded `TOOL_ATTACHMENT_RULES` so adding a new edge kind (e.g.
+    # `knowledge_attachment`) requires zero generator edits — just an
+    # entry in `shared/connection_rules.json`. The 2nd-caller kernel
+    # trap (tool_attachment → knowledge_attachment) flipped the
+    # switch.
+    rules_per_kind: list[tuple[str, str, dict]] = []
+    for kind_name in kind_keys:
+        block = edge_kinds_raw.get(kind_name) or {}
+        nested = block.get("rules") or {}
+        if not nested:
+            continue
+        rules_per_kind.append((kind_name, kind_name.upper(), nested))
+
+    for kind_name, kind_const, nested in rules_per_kind:
+        nested_keys = sorted(k for k in nested if not _is_doc_key(k))
+        lines.append(
+            f"/** {kind_name} rule table — `edge_kinds.{kind_name}.rules` "
+            "in the JSON. */"
+        )
+        lines.append(
+            f"export const {kind_const}_RULES: "
+            f"Readonly<Record<NodeType, ConnectionRule>> = {{"
+        )
+        for type_name in nested_keys:
+            spec = nested[type_name]
+            lines.append(f"  {json.dumps(type_name)}: {_render_rule(spec, groups_raw)},")
+        lines.append("};")
+        lines.append("")
 
     return "\n".join(lines)
 
@@ -230,11 +245,19 @@ def main() -> int:
     tmp.write_text(body, encoding="utf-8")
     tmp.replace(OUT_PATH)
 
+    # Summary line — count rules per edge kind so adding a new edge
+    # kind shows up in the generator output. Format:
+    # `wrote … (N dataflow rules, M tool_attachment rules, K knowledge_attachment rules)`.
+    raw_rules = raw.get("rules", {})
+    raw_edge_kinds = raw.get("edge_kinds") or {}
+    summary_parts = [f"{len(raw_rules)} dataflow rules"]
+    for kind_name in sorted(k for k in raw_edge_kinds if not _is_doc_key(k)):
+        block = raw_edge_kinds.get(kind_name) or {}
+        nested = block.get("rules") or {}
+        summary_parts.append(f"{len(nested)} {kind_name} rules")
     print(
         f"wrote {OUT_PATH.relative_to(REPO_ROOT)} "
-        f"({len(raw.get('rules', {}))} dataflow rules, "
-        f"{len(((raw.get('edge_kinds') or {}).get('tool_attachment') or {}).get('rules', {}))} "
-        f"tool_attachment rules)"
+        f"({', '.join(summary_parts)})"
     )
     return 0
 

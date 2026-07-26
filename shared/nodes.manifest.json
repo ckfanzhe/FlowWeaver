@@ -265,6 +265,68 @@
         ],
         "tools": []
       }
+    },
+    "knowledge": {
+      "_doc_": "RAG / knowledge source node. Mirrors `tool`/`tool_source` architecturally — a source node that does NOT appear in `wf.steps`; instead it lands in `ctx.knowledge_objects[nid]` and gets wired to an agent's `knowledge=...` parameter via a `kind: 'knowledge_attachment'` edge. `vectorDb` discriminator (`lancedb` | `pgvector` | `chroma`) selects the concrete agno VectorDb; `embedder` discriminator (`openai` | `sentence_transformers` | `cohere`) selects the embedder. Optional deps are not installed by default — `KnowledgeStrategy._build_vector_db` / `_build_embedder` raise `pip install <pkg>` if missing. `sources[]` records what the user wants indexed; the export emits only the `Knowledge(...)` constructor (users call `kb_<nid>.insert(path=...)` themselves). See plan [[gleaming-munching-grove]].",
+      "kind": "knowledge_source",
+      "category": "Data",
+      "displayName": "Knowledge",
+      "i18nKey": "knowledge",
+      "color": "border-teal-400/50 bg-teal-50 dark:bg-teal-950",
+      "textColor": "text-teal-700 dark:text-teal-300",
+      "icon": "KnowledgeIcon",
+      "configSchemaRef": "KnowledgeNodeConfig",
+      "defaultConfig": {
+        "name": "",
+        "description": "",
+        "maxResults": 10,
+        "addKnowledgeToContext": false,
+        "vectorDb": "lancedb",
+        "lancedbUri": "/tmp/lancedb",
+        "lancedbTableName": "agno_kb",
+        "pgvectorDbUrl": "",
+        "pgvectorTableName": "agno_kb",
+        "pgvectorSchema": "ai",
+        "chromaPath": "./chroma_db",
+        "chromaCollectionName": "agno_kb",
+        "chromaPersistentClient": true,
+        "embedder": "openai",
+        "openaiModel": "text-embedding-3-small",
+        "openaiApiKey": null,
+        "openaiBaseUrl": null,
+        "openaiDimensions": null,
+        "sentenceTransformersModel": "sentence-transformers/all-MiniLM-L6-v2",
+        "sentenceTransformersDimensions": 384,
+        "cohereModel": "embed-english-v3.0",
+        "cohereApiKey": null,
+        "cohereInputType": "search_query",
+        "sources": []
+      },
+      "capabilities": {
+        "compoundPass": null,
+        "isToolSource": false,
+        "isKnowledgeSource": true,
+        "needsToolWiring": false,
+        "needsKnowledgeWiring": false,
+        "skipPass1": true,
+        "stepWrapper": "none"
+      },
+      "ui": {
+        "group": "Data",
+        "form": "KnowledgeForm",
+        "paletteOrder": 8
+      },
+      "runtime": {
+        "module": "app.core.strategies.knowledge",
+        "builder": "KnowledgeStrategy"
+      },
+      "io": {
+        "inputs": [],
+        "outputs": [
+          "retrieval"
+        ],
+        "tools": []
+      }
     }
   }
 }

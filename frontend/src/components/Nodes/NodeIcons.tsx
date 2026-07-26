@@ -177,6 +177,40 @@ export function LoopIcon({ className }: IconProps) {
   )
 }
 
+/** Knowledge — open book with a small dot, evokes "things the agent
+ *  has read". New in [[gleaming-munching-grove]] — RAG / vector DB
+ *  sources for an agent's `knowledge=...` parameter. Visually
+ *  distinct from `ToolIcon` (wrench) — knowledge isn't a tool call,
+ *  it's retrieval context. The body renders the chosen vector DB +
+ *  embedder + source-count badges separately, so a single icon is
+ *  enough. */
+export function KnowledgeIcon({ className }: IconProps) {
+  return wrap(
+    <>
+      {/* Open book — two pages joined at a center spine */}
+      <path
+        d="M3 5h8a2 2 0 0 1 2 2v13a1 1 0 0 0-1-1H3V5z"
+        fill="currentColor"
+        stroke="currentColor"
+      />
+      <path
+        d="M21 5h-8a2 2 0 0 0-2 2v13a1 1 0 0 1 1-1h9V5z"
+        fill="currentColor"
+        stroke="currentColor"
+      />
+      {/* Three text-line strokes on the left page */}
+      <line x1="5" y1="9" x2="10" y2="9" stroke="white" strokeWidth="1.2" />
+      <line x1="5" y1="12" x2="10" y2="12" stroke="white" strokeWidth="1.2" />
+      <line x1="5" y1="15" x2="9" y2="15" stroke="white" strokeWidth="1.2" />
+      {/* Three text-line strokes on the right page */}
+      <line x1="14" y1="9" x2="19" y2="9" stroke="white" strokeWidth="1.2" />
+      <line x1="14" y1="12" x2="19" y2="12" stroke="white" strokeWidth="1.2" />
+      <line x1="14" y1="15" x2="18" y2="15" stroke="white" strokeWidth="1.2" />
+    </>,
+    className
+  )
+}
+
 // Icons keyed by the manifest's `icon` string
 // (`AgentIcon`, `RouterIcon`, ...). The `nodeStyles.ts` consumer reads
 // this to resolve the manifest entry's `icon` field into a React
@@ -216,6 +250,9 @@ export const ICON_BY_MANIFEST_NAME: Record<string, (p: IconProps) => JSX.Element
   // arxiv_search) reuse the same ToolIcon — the body's preset
   // badge (`tool preset: <name>`) carries the distinction.
   ToolIcon,
+  // : RAG / vector DB source.
+  // The body shows vector DB kind + embedder kind + source count.
+  KnowledgeIcon,
 }
 
 // Sentinel icon used by `nodeStyles.entryToVisual` when a manifest

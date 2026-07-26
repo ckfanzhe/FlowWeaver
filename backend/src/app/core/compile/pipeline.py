@@ -10,6 +10,12 @@ emission order but operating on Python objects:
   - **pass 0**  Tool-source objects (`tools` / `http` / `mcp`) — these
                 are NOT in `wf.steps`. They live in `ctx.tool_objects`
                 and are stitched into agents in pass 3.
+  - **pass 0b** Knowledge-source objects (`knowledge`) — `Knowledge(...)`
+                instances live in `ctx.knowledge_objects` and get wired
+                into agents' `knowledge=...` parameter in pass 3b. New
+                in [[gleaming-munching-grove]] — parallels tool sources
+                but for agno's separate `knowledge` parameter (NOT
+                `tools=[...]`).
   - **pass 1**  Object declarations per node:
                   - `agent`           → `Agent(...)`
                   - `ask`             → `Step(requires_user_input=True, ...)`
@@ -19,6 +25,8 @@ emission order but operating on Python objects:
                   nodes (currently only `agent`).
   - **pass 2**  Compound nodes built from their downstream targets.
   - **pass 3**  Wire each agent's `tools=[...]` from `ir.tool_attachments`.
+  - **pass 3b** Wire each agent's `knowledge=...` from
+                `ir.knowledge_attachments` (NEW ).
   - **assemble** `Workflow(steps=[...])`.
 
 Adding a new node type means dropping a strategy class under
@@ -62,6 +70,12 @@ class CompileCtx:
     objects: dict[str, Any] = field(default_factory=dict)
     # tool-source pool (nid → list of agno tool instances or source blocks)
     tool_objects: dict[str, list[Any]] = field(default_factory=dict)
+    # knowledge-source pool (nid → agno `Knowledge` instance).
+    # Parallel to `tool_objects` — but knowledge nodes produce a
+    # SINGLE object (not a list) because agno's `Knowledge` is not a
+    # tool-call target, just a retrieval context attached via
+    # `Agent(knowledge=...)`. See plan [[gleaming-munching-grove]].
+    knowledge_objects: dict[str, Any] = field(default_factory=dict)
     # HTTP wrapper metadata (the runtime builds the function, the
     # exporter emits the source — both use the same metadata).
     http_wrappers: dict[str, dict] = field(default_factory=dict)
@@ -142,10 +156,12 @@ def build_workflow(
     )
 
     _pass0_tool_sources(ctx, db_nodes)
+    _pass0_knowledge_sources(ctx, db_nodes)
     _pass1_objects(ctx)
     _pass1_5_step_wrappers(ctx)
     _pass2_compounds(ctx)
     _pass3_tool_wiring(ctx)
+    _pass3_knowledge_wiring(ctx)
     return _assemble(workflow_id, name, ir, ctx, start_node_id=start_node_id)
 
 def _pass0_tool_sources(ctx: CompileCtx, db_nodes: list[dict]) -> None:
@@ -162,6 +178,28 @@ def _pass0_tool_sources(ctx: CompileCtx, db_nodes: list[dict]) -> None:
         if not isinstance(objs, list):
             objs = [objs]
         ctx.tool_objects[nid] = list(objs or [])
+
+
+def _pass0_knowledge_sources(ctx: CompileCtx, db_nodes: list[dict]) -> None:
+    """Build the knowledge-source pool — parallel to `_pass0_tool_sources`
+    but for agno's `knowledge=...` parameter (not `tools=[...]`).
+
+    Knowledge nodes produce a SINGLE object (an agno `Knowledge`
+    instance) rather than a list — there's no concept of "multiple
+    tools in one tool-source node" for RAG, so the pool is shaped as
+    `dict[nid, Knowledge]` instead of `dict[nid, list[Any]]`. The
+    wiring pass (`_pass3_knowledge_wiring`) attaches it to an agent
+    via `agent_obj.knowledge = kb` (singular, not `tools=[...]`).
+    """
+    for nid, node in ctx.nodes_by_id.items():
+        spec = NODE_TYPES.get(node["type"])
+        if spec is None:
+            continue
+        strategy = spec.strategy
+        if not strategy.IS_KNOWLEDGE_SOURCE:
+            continue
+        obj = strategy.build(nid, node, ctx)
+        ctx.knowledge_objects[nid] = obj
 
 def _pass1_objects(ctx: CompileCtx) -> None:
     """Build the agent / ask objects. Compound nodes are
@@ -258,6 +296,35 @@ def _pass3_tool_wiring(ctx: CompileCtx) -> None:
                 tools.append(tool)
         if tools:
             agent_obj.tools = tools
+
+
+def _pass3_knowledge_wiring(ctx: CompileCtx) -> None:
+    """Attach each agent's `knowledge=...` to the agno `Knowledge`
+    instance built in pass 0b.
+
+    Parallel to `_pass3_tool_wiring` but for the `knowledge=...`
+    parameter (singular, not `tools=[...]`). Source of truth:
+    `ir.knowledge_attachments[agent_id]`. Connection rule
+    `max_incoming: 1` keeps each bucket at length ≤ 1; we still index
+    `refs[0]` defensively (an empty list = nothing to wire).
+
+    Setting `agent.knowledge = kb` directly mirrors how pass 3 sets
+    `agent.tools = [...]` — the strategy's `build()` doesn't need to
+    know about knowledge at all, keeping the signature stable for the
+    5 other strategy classes that don't care.
+    """
+    for agent_id, refs in ctx.ir.knowledge_attachments.items():
+        if not refs:
+            continue
+        agent_step = ctx.objects.get(agent_id)
+        if agent_step is None:
+            continue
+        agent_obj = getattr(agent_step, "agent", None)
+        if agent_obj is None:
+            continue
+        kb = ctx.knowledge_objects.get(refs[0])
+        if kb is not None:
+            agent_obj.knowledge = kb
 
 def _assemble(
     workflow_id: str,

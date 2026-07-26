@@ -55,7 +55,7 @@ class NodeStrategy:
     # Declarative metadata — read by the pipeline / serializer /
     # manifest loader to decide "which pass does this type belong to?"
     # ─────────────────────────────────────────────────────────────
-    KIND: ClassVar[Literal["executable", "compound", "tool_source", "control_flow"]] = "executable"
+    KIND: ClassVar[Literal["executable", "compound", "tool_source", "knowledge_source", "control_flow"]] = "executable"
     # pass-2 ordering integer (None ⇒ not compound). The serializer /
     # runtime sort compound types on this key. Legacy values
     # (preserved for back-compat): parallel=10, condition=20,
@@ -64,10 +64,20 @@ class NodeStrategy:
     # True for nodes that live in `ctx.tool_objects` and get wired
     # into agents by pass 3 (tools / http / mcp).
     IS_TOOL_SOURCE: ClassVar[bool] = False
+    # True for nodes that live in `ctx.knowledge_objects` and get bound
+    # to an agent's `knowledge=...` by pass 3 (knowledge — RAG sources).
+    # Parallel to `IS_TOOL_SOURCE` — knowledge is semantically separate
+    # from tools in agno (Agent has both `tools=[...]` and
+    # `knowledge=...`), so it gets its own pool + wiring path.
+    IS_KNOWLEDGE_SOURCE: ClassVar[bool] = False
     # True for nodes that should have their `tools=[...]` list
     # replaced by the pipeline with attached tool-source nodes
     # (currently only the agent type).
     NEEDS_TOOL_WIRING: ClassVar[bool] = False
+    # True for nodes that should have their `knowledge=...` attribute
+    # replaced by the pipeline with attached knowledge-source nodes
+    # (currently only the agent type). Parallel to `NEEDS_TOOL_WIRING`.
+    NEEDS_KNOWLEDGE_WIRING: ClassVar[bool] = False
     # `"agent"` | `"ask"` | `"none"`. Pass-1.5 wraps the
     # object in `Step(name=..., agent=...)` for the first two;
     # compound types are their own agno object and don't need a

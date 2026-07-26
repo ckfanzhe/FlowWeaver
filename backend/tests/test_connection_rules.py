@@ -271,7 +271,7 @@ def test_loop_with_no_bodyTarget_is_valid():
 # ─────────────────────────────────────────────────────────────────
 # 8. Schema sanity — the rule table matches what tests assume
 # ─────────────────────────────────────────────────────────────────
-def test_rule_table_has_all_15_types():
+def test_rule_table_has_all_7_types():
     """If a new node type is added, the rule table MUST include it or
     every edge touching it will be flagged `incompatibleSource` /
     `incompatibleTarget`. This test exists to remind future maintainers.
@@ -284,11 +284,14 @@ def test_rule_table_has_all_15_types():
     (wikipedia / tavily_search /
     duckduckgo / calculator / arxiv_search) collapsed into the `tool`
     node's `preset` config discriminator — they no longer appear as
-    separate rule table rows. 6 base types × edge rules remain.
+    separate rule table rows. The `knowledge` node (RAG / vector DB
+    source) joined as a 7th base type in
+    [[gleaming-munching-grove]].
 
     The set here mirrors `shared/connection_rules.json::groups.tool_source
-    + groups.executable` — drift between this test and the JSON is
-    caught by `scripts/check_connection_rules_consistency.py`.
+    + groups.knowledge_source + groups.executable` — drift between this
+    test and the JSON is caught by
+    `scripts/check_connection_rules_consistency.py`.
     """
     expected = {
         "agent", "ask",
@@ -297,6 +300,11 @@ def test_rule_table_has_all_15_types():
         # 5 presets collapsed into the
         # `tool` node's `preset` discriminator — no separate rules.
         "tool",
+        # RAG / knowledge source. New in [[gleaming-munching-grove]].
+        # The `dataflow` rule table forbids dataflow edges in either
+        # direction; wiring is via `knowledge_attachment` only
+        # (parallels the `tool` row).
+        "knowledge",
     }
     assert set(CONNECTION_RULES.keys()) == expected
 
@@ -508,17 +516,18 @@ def test_json_rules_file_loads_successfully():
     assert "rules" in payload
     assert "groups" in payload
 
-def test_all_6_node_types_have_rules():
+def test_all_7_node_types_have_rules():
     """Every node type the platform supports must have a JSON entry.
 
-    There are 6 base types — agent + ask (renamed from
+    There are 7 base types — agent + ask (renamed from
     human_input) + branch (collapsed from router+condition) +
     flow (collapsed from parallel+steps) + loop + tool (collapsed
-    from http/mcp/tools plus the 5 preset tool types). Asserted
-    as exact count so a future base-type addition is a deliberate
-    test update rather than a silent drift. The 5 presets now
-    route through the `tool` node's `preset` config discriminator
-    and don't need their own rule table rows.
+    from http/mcp/tools plus the 5 preset tool types) + knowledge
+    (RAG / vector DB source — new in [[gleaming-munching-grove]]).
+    Asserted as exact count so a future base-type addition is a
+    deliberate test update rather than a silent drift. The 5
+    presets now route through the `tool` node's `preset` config
+    discriminator and don't need their own rule table rows.
     """
     expected = {
         "agent", "ask",
@@ -527,6 +536,9 @@ def test_all_6_node_types_have_rules():
         # 5 presets collapsed into the
         # `tool` node's `preset` discriminator — no separate rules.
         "tool",
+        # RAG / knowledge source — knowledge_attachment edges only,
+        # no dataflow edges. Same shape as the `tool` row.
+        "knowledge",
     }
     assert set(CONNECTION_RULES.keys()) == expected
 

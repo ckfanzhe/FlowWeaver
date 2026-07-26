@@ -18,6 +18,11 @@
  * zero dataflow edges — degree bounds must still fire), and any
  * additional `edge_kinds.<kind>` table is consulted alongside it.
  *
+ * : `knowledge_attachment` joins the per-kind
+ * dispatch — RAG sources attached to an agent's `knowledge=...`
+ * parameter (NOT `tools=[...]`). `KNOWLEDGE_ATTACHMENT_RULES` is
+ * emitted by the same codegen pass alongside `TOOL_ATTACHMENT_RULES`.
+ *
  * Drift is checked by `scripts/check_connection_rules_consistency.py`
  * (runs in CI alongside the backend tests).
  */
@@ -25,23 +30,31 @@ import type { NodeType, WorkflowEdge, WorkflowNode } from '../types/workflow';
 import {
   CONNECTION_RULES,
   TOOL_ATTACHMENT_RULES,
+  KNOWLEDGE_ATTACHMENT_RULES,
   TOOL_SOURCE_TYPES,
   type ConnectionRule,
 } from './connectionRules.generated';
 
-export type EdgeKind = 'dataflow' | 'tool_attachment';
+export type EdgeKind = 'dataflow' | 'tool_attachment' | 'knowledge_attachment';
 
 export const ENTRY_TYPE: NodeType = 'agent'; // workflow's first step is treated as the entry; no dedicated node
 export const TERMINAL_TYPE: NodeType = 'agent'; // workflow's last step is the output; no dedicated node
 
 /** Re-exported for callers that previously imported these from here. */
-export { CONNECTION_RULES, TOOL_ATTACHMENT_RULES, TOOL_SOURCE_TYPES };
+export {
+  CONNECTION_RULES,
+  TOOL_ATTACHMENT_RULES,
+  KNOWLEDGE_ATTACHMENT_RULES,
+  TOOL_SOURCE_TYPES,
+};
 export type { ConnectionRule };
 
 /** Normalise an edge's `kind` to a known value (unknown → "dataflow"). */
 export function edgeKindOf(edge: { kind?: string | null }): EdgeKind {
   const k = (edge?.kind ?? '').toString();
-  return k === 'tool_attachment' ? 'tool_attachment' : 'dataflow';
+  if (k === 'tool_attachment') return 'tool_attachment';
+  if (k === 'knowledge_attachment') return 'knowledge_attachment';
+  return 'dataflow';
 }
 
 export type ErrorCode =
@@ -86,7 +99,9 @@ function ruleOf(
 
 /** Pick the right rule table for an edge's kind. */
 function rulesForKind(kind: EdgeKind): RuleTable {
-  return kind === 'tool_attachment' ? TOOL_ATTACHMENT_RULES : CONNECTION_RULES;
+  if (kind === 'tool_attachment') return TOOL_ATTACHMENT_RULES;
+  if (kind === 'knowledge_attachment') return KNOWLEDGE_ATTACHMENT_RULES;
+  return CONNECTION_RULES;
 }
 
 /** Pure validator — mirrors `validate_connections` in the Python module.

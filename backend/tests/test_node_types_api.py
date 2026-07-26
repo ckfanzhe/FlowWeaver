@@ -33,18 +33,19 @@ def test_node_types_endpoint_reachable(client):
 def test_node_types_endpoint_lists_every_manifest_entry(client):
     r = client.get("/api/v1/node-types")
     body = r.json()
-    # There are 6 base types — agent, branch (collapsed from the
+    # There are 7 base types — agent, branch (collapsed from the
     # earlier router/condition pair), flow (collapsed from
-    # parallel/steps), loop, ask (renamed from human_input), and
-    # tool (collapsed from http/mcp/tools plus the 5 preset tool
-    # types). Asserted as exact count so a future base-type
-    # addition is a deliberate test update rather than a silent
-    # drift. The 5 presets now route through the `tool` node's
-    # `preset` config discriminator and no longer appear as
-    # separate entries in the manifest.
-    assert len(body["types"]) == 6
+    # parallel/steps), loop, ask (renamed from human_input), tool
+    # (collapsed from http/mcp/tools plus the 5 preset tool types),
+    # and knowledge (RAG / vector DB source — new in
+    # [[gleaming-munching-grove]]). Asserted as exact count so a
+    # future base-type addition is a deliberate test update rather
+    # than a silent drift. The 5 presets now route through the
+    # `tool` node's `preset` config discriminator and no longer
+    # appear as separate entries in the manifest.
+    assert len(body["types"]) == 7
     assert set(body["types"]) == {
-        "agent", "branch", "flow", "loop", "ask", "tool",
+        "agent", "branch", "flow", "loop", "ask", "tool", "knowledge",
     }
 
 def test_node_types_endpoint_includes_phase7_fields(client):
@@ -55,13 +56,16 @@ def test_node_types_endpoint_includes_phase7_fields(client):
     for name, entry in body["entries"].items():
         # Structural fields — must be present and well-typed.
         assert "kind" in entry, f"{name} missing kind"
-        assert entry["kind"] in ("executable", "compound", "tool_source", "control_flow")
+        assert entry["kind"] in (
+            "executable", "compound", "tool_source", "knowledge_source", "control_flow",
+        )
         assert "extends" in entry, f"{name} missing extends"
         assert "ui" in entry, f"{name} missing ui"
         assert set(entry["ui"].keys()) == {"group", "form", "paletteOrder"}
         assert "capabilities" in entry, f"{name} missing capabilities"
         assert set(entry["capabilities"].keys()) == {
-            "compoundPass", "isToolSource", "needsToolWiring",
+            "compoundPass", "isToolSource", "isKnowledgeSource",
+            "needsToolWiring", "needsKnowledgeWiring",
             "skipPass1", "stepWrapper",
         }
         assert "defaultConfig" in entry, f"{name} missing defaultConfig"
@@ -87,8 +91,10 @@ def test_node_types_endpoint_step_wrapper_per_kind(client):
     # `tool` entry — it joins the stepWrapper='none' group below.
     # The 5 preset tool types collapsed into the `tool` node's
     # `preset` config discriminator — no separate preset entries
-    # exist in the manifest anymore.
-    for ntype in ("branch", "flow", "loop", "tool"):
+    # exist in the manifest anymore. Knowledge sources (new in
+    # [[gleaming-munching-grove]]) are not in `wf.steps` either, so
+    # they also live in the `stepWrapper='none'` group.
+    for ntype in ("branch", "flow", "loop", "tool", "knowledge"):
         assert body["entries"][ntype]["capabilities"]["stepWrapper"] == "none", (
             f"{ntype} should have stepWrapper=none"
         )

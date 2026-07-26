@@ -62,6 +62,8 @@ from app.schemas.node_configs import (  # noqa: E402
     ConditionEvaluator,
     FlowNodeConfig,
     AskConfig,
+    KnowledgeNodeConfig,
+    KnowledgeSource,
     LoopNodeConfig,
     ModelConfig,
     ParamSchema,
@@ -78,6 +80,9 @@ OUT_PATH = REPO_ROOT / "frontend" / "src" / "types" / "node-configs.generated.ts
 #   - flow: parallel | sequential primitive (was parallel + steps)
 #   - branch: switch | if-else primitive (was router + condition)
 #   - tool: http | mcp | function source (was http + mcp + tools)
+#   - knowledge: lancedb | pgvector | chroma vectorDb + openai |
+#     sentence_transformers | cohere embedder — see
+#     [[gleaming-munching-grove]].
 SCHEMAS_IN_ORDER: list[type[BaseModel]] = [
     ModelConfig,
     ParamSchema,
@@ -91,6 +96,8 @@ SCHEMAS_IN_ORDER: list[type[BaseModel]] = [
     FlowNodeConfig,
     LoopNodeConfig,
     AskConfig,
+    KnowledgeSource,
+    KnowledgeNodeConfig,
 ]
 
 # The discriminated union that consumers narrow on via `node.type`.
@@ -101,6 +108,7 @@ UNION_MEMBERS: list[type[BaseModel]] = [
     FlowNodeConfig,
     LoopNodeConfig,
     AskConfig,
+    KnowledgeNodeConfig,
 ]
 
 

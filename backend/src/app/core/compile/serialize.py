@@ -95,10 +95,12 @@ def to_python_source(
 
     # Run the same passes the runtime does, but emit source.
     pass0 = _pass0_tool_sources_source(ctx)
+    pass0b = _pass0_knowledge_sources_source(ctx)
     pass1 = _pass1_objects_source(ctx)
     pass1_5 = _pass1_5_step_wrappers_source(ctx)
     pass2 = _pass2_compounds_source(ctx)
     pass3 = _pass3_tool_wiring_source(ctx)
+    pass3b = _pass3_knowledge_wiring_source(ctx)
     pass4 = assemble_workflow(safe, ir)
     main = _main_entry()
 
@@ -111,7 +113,7 @@ def to_python_source(
     )
     extra_block = "\n".join(imports_extra) + "\n\n" if imports_extra else ""
     return (
-        header + extra_block + pass0 + pass1 + pass1_5 + pass2 + pass3 + pass4 + main
+        header + extra_block + pass0 + pass0b + pass1 + pass1_5 + pass2 + pass3 + pass3b + pass4 + main
     )
 
 def _pass0_tool_sources_source(ctx: CompileCtx) -> str:
@@ -133,6 +135,34 @@ def _pass0_tool_sources_source(ctx: CompileCtx) -> str:
         if spec is None:
             continue
         if not spec.strategy.IS_TOOL_SOURCE:
+            continue
+        blocks.append(spec.strategy.to_source(nid, node, ctx))
+    return "".join(blocks)
+
+
+def _pass0_knowledge_sources_source(ctx: CompileCtx) -> str:
+    """Emit `<nid>_kb = Knowledge(...)` blocks at module scope.
+
+    Parallel to `_pass0_tool_sources_source` — knowledge sources also
+    get defined at module scope (before agents) so Python's name
+    resolution sees them by the time the agent's `knowledge=<ref>_kb`
+    reference is evaluated in pass 3b. The order matches the runtime:
+    pass 0 (tools) → pass 0b (knowledge) → pass 1 (agents).
+
+    Each block is 3 lines (embedder → vector_db → Knowledge) per
+    `knowledge_expr.knowledge_block`. See plan
+    [[gleaming-munching-grove]] for the build-order rationale.
+    """
+    blocks: list[str] = []
+    nodes_by_id = ctx.nodes_by_id
+    for nid in ctx.ir.topo_order:
+        node = nodes_by_id.get(nid)
+        if node is None:
+            continue
+        spec = NODE_TYPES.get(node["type"])
+        if spec is None:
+            continue
+        if not spec.strategy.IS_KNOWLEDGE_SOURCE:
             continue
         blocks.append(spec.strategy.to_source(nid, node, ctx))
     return "".join(blocks)
@@ -159,10 +189,14 @@ def _pass1_objects_source(ctx: CompileCtx) -> str:
         strategy = spec.strategy
         # Compound nodes are deferred to pass 2; tool-source nodes
         # are handled by pass 0 / pass 3 (their `to_source()` lives
-        # in the wrapper-function / MCPTools source).
+        # in the wrapper-function / MCPTools source). Knowledge-source
+        # nodes are handled by pass 0b / pass 3b (their `to_source()`
+        # emits the `Knowledge(...)` constructor block).
         if strategy.COMPOUND_PASS is not None:
             continue
         if strategy.IS_TOOL_SOURCE:
+            continue
+        if strategy.IS_KNOWLEDGE_SOURCE:
             continue
         blocks.append(strategy.to_source(nid, node, ctx))
     return "".join(blocks)
@@ -228,6 +262,32 @@ def _pass3_tool_wiring_source(ctx: CompileCtx) -> str:
             continue
         expr = tools_list(refs, nodes_by_id, ctx.http_wrappers)
         blocks.append(f"{nid}_agent.tools = {expr}\n")
+    return "".join(blocks)
+
+
+def _pass3_knowledge_wiring_source(ctx: CompileCtx) -> str:
+    """Pass 3b: wire each agent's `knowledge=...` (the source equivalent).
+
+    Emits `<nid>_agent.knowledge = <ref>_kb` lines — the runtime pass
+    sets the attribute directly via `setattr`; the source path
+    mirrors that with a literal assignment. `knowledge_ref(ref)`
+    returns the variable expression (`<ref>_kb`) emitted in pass 0b.
+
+    Empty `refs` / dangling refs are silently skipped (the connection
+    validator rejects dangling edges on save, so this is a belt-and-
+    braces defensive skip — matches `_pass3_tool_wiring_source`).
+    """
+    from app.core.compile._helpers.knowledge_expr import knowledge_ref
+
+    blocks: list[str] = []
+    nodes_by_id = ctx.nodes_by_id
+    for agent_id, refs in ctx.ir.knowledge_attachments.items():
+        if not refs:
+            continue
+        ref = refs[0]
+        if ref not in nodes_by_id:
+            continue
+        blocks.append(f"{agent_id}_agent.knowledge = {knowledge_ref(ref)}\n")
     return "".join(blocks)
 
 def _main_entry() -> str:

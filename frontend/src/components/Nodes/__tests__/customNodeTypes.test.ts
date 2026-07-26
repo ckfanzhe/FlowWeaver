@@ -51,6 +51,11 @@ const ALL_TYPES: NodeType[] = [
   'loop',
   'ask',
   'tool',
+  // : RAG / vector DB source.
+  // Parallel to `tool_source` architecturally; wired to an agent via
+  // `knowledge_attachment` edges (see
+  // `shared/connection_rules.json::edge_kinds.knowledge_attachment`).
+  'knowledge',
 ]
 
 test('customNodeTypes: every NodeType is registered', () => {
