@@ -32,6 +32,7 @@ import {
   TOOL_ATTACHMENT_RULES,
   KNOWLEDGE_ATTACHMENT_RULES,
   TOOL_SOURCE_TYPES,
+  KNOWLEDGE_SOURCE_TYPES,
   type ConnectionRule,
 } from './connectionRules.generated';
 
@@ -46,6 +47,7 @@ export {
   TOOL_ATTACHMENT_RULES,
   KNOWLEDGE_ATTACHMENT_RULES,
   TOOL_SOURCE_TYPES,
+  KNOWLEDGE_SOURCE_TYPES,
 };
 export type { ConnectionRule };
 

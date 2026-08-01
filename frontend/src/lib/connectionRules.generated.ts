@@ -23,6 +23,7 @@ export const GROUPS: Readonly<Record<string, ReadonlyArray<NodeType>>> = {
 
 export const EXECUTABLE_TYPES: ReadonlySet<NodeType> = new Set<NodeType>(["agent", "ask", "branch", "flow", "loop"]);
 export const TOOL_SOURCE_TYPES: ReadonlySet<NodeType> = new Set<NodeType>(["tool"]);
+export const KNOWLEDGE_SOURCE_TYPES: ReadonlySet<NodeType> = new Set<NodeType>(["knowledge"]);
 
 export interface ConnectionRule {
   /** Who is allowed to have an outgoing edge INTO this node. */

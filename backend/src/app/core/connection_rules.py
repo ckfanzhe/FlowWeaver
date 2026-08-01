@@ -198,10 +198,12 @@ def _load_all_rules() -> dict[str, dict[str, ConnectionRule]]:
 # that shape by re-exporting the dataflow table here.
 CONNECTION_RULES: dict[str, ConnectionRule] = _load_all_rules().get("dataflow", {})
 TOOL_ATTACHMENT_RULES: dict[str, ConnectionRule] = _load_all_rules().get("tool_attachment", {})
+KNOWLEDGE_ATTACHMENT_RULES: dict[str, ConnectionRule] = _load_all_rules().get("knowledge_attachment", {})
 EDGE_RULES: dict[str, dict[str, ConnectionRule]] = _load_all_rules()
 
 EXECUTABLE_TYPES: frozenset[str] = _load_groups().get("executable", frozenset())
 TOOL_SOURCE_TYPES: frozenset[str] = _load_groups().get("tool_source", frozenset())
+KNOWLEDGE_SOURCE_TYPES: frozenset[str] = _load_groups().get("knowledge_source", frozenset())
 
 # ─────────────────────────────────────────────────────────────────
 # Edge kind resolution — `None` (legacy) and missing field → dataflow.
@@ -532,7 +534,9 @@ def would_be_valid_connection(
     excluded — they describe the graph as a whole, not the candidate.
 
     `kind` selects which rule table to apply:
-    `"dataflow"` (default, legacy behaviour) or `"tool_attachment"`.
+    `"dataflow"` (default, legacy behaviour), `"tool_attachment"`
+    (tool-source → agent), or `"knowledge_attachment"` (knowledge →
+    agent RAG wiring, new in [[gleaming-munching-grove]]).
     Returns an empty list if the candidate is legal.
     """
     # `kind` is intentionally the public kwarg here; older callers

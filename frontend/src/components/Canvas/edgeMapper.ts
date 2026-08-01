@@ -48,6 +48,9 @@ export function mapFlowEdge(e: WorkflowEdge): Edge {
     target: e.target,
     sourceHandle: normalizeHandle(e.sourceHandle),
     targetHandle: normalizeHandle(e.targetHandle),
-    type: e.kind === 'tool_attachment' ? 'tool_attachment' : 'dataflow',
+    type:
+      e.kind === 'tool_attachment' ? 'tool_attachment'
+      : e.kind === 'knowledge_attachment' ? 'tool_attachment'  // visual parity with tool wires
+      : 'dataflow',
   }
 }

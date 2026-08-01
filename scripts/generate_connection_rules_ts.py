@@ -120,6 +120,10 @@ def generate(raw: dict) -> str:
     groups = _resolve_group_spec(groups_raw)
     executable = groups.get("executable", [])
     tool_source = groups.get("tool_source", [])
+    # RAG / knowledge sources — sets the kind=knowledge_attachment on
+    # outgoing edges so the IR builder + agent wiring pick the right
+    # path. New in [[gleaming-munching-grove]].
+    knowledge_source = groups.get("knowledge_source", [])
 
     # Sort every collection for byte-stable output.
     rule_keys = sorted(k for k in rules_raw if not _is_doc_key(k))
@@ -152,7 +156,7 @@ def generate(raw: dict) -> str:
     lines.append("};")
     lines.append("")
 
-    # EXECUTABLE_TYPES / TOOL_SOURCE_TYPES — derived convenience sets.
+    # EXECUTABLE_TYPES / TOOL_SOURCE_TYPES / KNOWLEDGE_SOURCE_TYPES — derived convenience sets.
     lines.append(
         f"export const EXECUTABLE_TYPES: ReadonlySet<NodeType> = "
         f"new Set<NodeType>({json.dumps(executable)});"
@@ -160,6 +164,14 @@ def generate(raw: dict) -> str:
     lines.append(
         f"export const TOOL_SOURCE_TYPES: ReadonlySet<NodeType> = "
         f"new Set<NodeType>({json.dumps(tool_source)});"
+    )
+    # RAG / knowledge sources — the canvas uses this set to tag outgoing
+    # edges as `kind: 'knowledge_attachment'` so the IR builder routes
+    # them through the knowledge_attachment walker (parallel to how
+    # TOOL_SOURCE_TYPES routes through tool_attachment).
+    lines.append(
+        f"export const KNOWLEDGE_SOURCE_TYPES: ReadonlySet<NodeType> = "
+        f"new Set<NodeType>({json.dumps(knowledge_source)});"
     )
     lines.append("")
 

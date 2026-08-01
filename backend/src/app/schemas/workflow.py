@@ -128,12 +128,15 @@ class WorkflowEdge(BaseModel):
     target: str
     sourceHandle: Optional[str] = None
     targetHandle: Optional[str] = None
-    # Edge kind. The workflow canvas now carries two distinct edge
+    # Edge kind. The workflow canvas carries three distinct edge
     # semantics. `dataflow` (default) is the existing control-flow
-    # edge; `tool_attachment` is the new `tool-source → agent` wiring
-    # that replaces cfg.toolsRef. Unknown / absent values are coerced
+    # edge; `tool_attachment` is the `tool-source → agent` wiring that
+    # replaced cfg.toolsRef; `knowledge_attachment` is the RAG
+    # `knowledge → agent` wiring that binds a Knowledge instance to an
+    # agent's `knowledge=...` parameter. New in
+    # [[gleaming-munching-grove]]. Unknown / absent values are coerced
     # to `dataflow` by the validator.
-    kind: Optional[Literal["dataflow", "tool_attachment"]] = None
+    kind: Optional[Literal["dataflow", "tool_attachment", "knowledge_attachment"]] = None
 
 # ─────────────────────────────────────────────────────────────────
 # Workflow CRUD

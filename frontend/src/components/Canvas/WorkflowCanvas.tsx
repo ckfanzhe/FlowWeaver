@@ -9,6 +9,23 @@
  *  - while dragging a connection: unreachable nodes are dimmed so
  *    the user can see which targets are valid before releasing.
  */
+
+/**
+ * Determine the canonical edge kind for a drag-out from `sourceType`.
+ *
+ * : the prior copy used a 2-case ternary on
+ * `TOOL_SOURCE_TYPES.has(...)`, which silently mis-tagged RAG drags as
+ * `dataflow` (knowledge wasn't in the set). Second caller —
+ * `validateConnection` and `onConnect` both needed the same mapping.
+ * Extracted per [[agnobuilder-arch-iron-rules]].
+ */
+function edgeKindForSourceType(sourceType: string | undefined): EdgeKind {
+  if (!sourceType) return 'dataflow'
+  if (KNOWLEDGE_SOURCE_TYPES.has(sourceType as never)) return 'knowledge_attachment'
+  if (TOOL_SOURCE_TYPES.has(sourceType as never)) return 'tool_attachment'
+  return 'dataflow'
+}
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Background,
@@ -36,6 +53,7 @@ import { DataflowEdge } from './DataflowEdge'
 import { ToolAttachmentEdge } from './ToolAttachmentEdge'
 import { t as i18n } from '../../i18n'
 import {
+  KNOWLEDGE_SOURCE_TYPES,
   TOOL_SOURCE_TYPES,
   wouldBeValidConnection,
   type ConnectionError as RuleError,
@@ -133,10 +151,7 @@ function CanvasInner() {
     (src: string, tgt: string): RuleError[] => {
       if (!src || !tgt) return []
       const srcNode = nodes.find((n) => n.id === src)
-      const kind: EdgeKind =
-        srcNode && TOOL_SOURCE_TYPES.has(srcNode.type)
-          ? 'tool_attachment'
-          : 'dataflow'
+      const kind: EdgeKind = edgeKindForSourceType(srcNode?.type)
       return wouldBeValidConnection(src, tgt, nodes, edges, kind)
     },
     [nodes, edges],
@@ -425,10 +440,7 @@ function CanvasInner() {
       // builder) pick the right rule table. Tool-source → agent drags
       // are `tool_attachment`; everything else stays `dataflow`.
       const srcNode = nodes.find((n) => n.id === src)
-      const kind: EdgeKind =
-        srcNode && TOOL_SOURCE_TYPES.has(srcNode.type)
-          ? 'tool_attachment'
-          : 'dataflow'
+      const kind: EdgeKind = edgeKindForSourceType(srcNode?.type)
       addEdge({
         id: `e-${src}-${tgt}-${Date.now().toString(36)}`,
         source: src,
