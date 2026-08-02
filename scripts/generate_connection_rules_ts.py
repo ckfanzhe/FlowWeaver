@@ -223,11 +223,22 @@ def generate(raw: dict) -> str:
         nested_keys = sorted(k for k in nested if not _is_doc_key(k))
         lines.append(
             f"/** {kind_name} rule table — `edge_kinds.{kind_name}.rules` "
-            "in the JSON. */"
+            "in the JSON. Only the source / target node types that "
+            "participate in this edge kind have entries (e.g. "
+            "`tool_attachment` only has `agent` + `tool` rows). "
+            "Use `ruleOf(src, tgt, kind)` or `rulesForKind(kind)[type]` "
+            "with an `in` check — callers that look up by NodeType "
+            "must handle the `undefined` case for non-participating "
+            "types. */"
         )
+        # Partial<Record<...>>: each edge-kind rule block only lists
+        # the participating node types (e.g. `tool_attachment` has
+        # `agent` + `tool`; `dataflow` lists all 7). Declaring the
+        # full Record would force the JSON to enumerate every
+        # NodeType for every edge kind, which is just noise.
         lines.append(
             f"export const {kind_const}_RULES: "
-            f"Readonly<Record<NodeType, ConnectionRule>> = {{"
+            f"Readonly<Partial<Record<NodeType, ConnectionRule>>> = {{"
         )
         for type_name in nested_keys:
             spec = nested[type_name]

@@ -20,7 +20,7 @@
  *
  * Run:  npx tsx --test src/lib/__tests__/snapshotStore.test.ts
  */
-import { openDB } from 'idb'
+import { openDB, type IDBPDatabase } from 'idb'
 import type { WorkflowNode, WorkflowEdge } from '../types/workflow'
 
 const SNAPSHOT_DB_NAME = 'agnobuilder-snapshots'
@@ -57,7 +57,7 @@ export function snapshotKey(userId: string, workflowId: string | null): string {
   return `${userId}::${workflowId ?? 'draft'}`
 }
 
-function _openDb(): Promise<IDBPDatabase> {
+function _openDb(): Promise<IDBPDatabase<unknown>> {
   return openDB(SNAPSHOT_DB_NAME, SNAPSHOT_DB_VERSION, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(SNAPSHOT_STORE)) {
@@ -67,7 +67,7 @@ function _openDb(): Promise<IDBPDatabase> {
   })
 }
 
-async function _db(): Promise<IDBPDatabase | null> {
+async function _db(): Promise<IDBPDatabase<unknown> | null> {
   if (typeof indexedDB === 'undefined') return null
   try {
     // Open (and close) a fresh connection per call. `idb`'s openDB

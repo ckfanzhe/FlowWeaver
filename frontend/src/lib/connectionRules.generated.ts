@@ -96,8 +96,8 @@ export const CONNECTION_RULES: Readonly<Record<NodeType, ConnectionRule>> = {
 },
 };
 
-/** knowledge_attachment rule table — `edge_kinds.knowledge_attachment.rules` in the JSON. */
-export const KNOWLEDGE_ATTACHMENT_RULES: Readonly<Record<NodeType, ConnectionRule>> = {
+/** knowledge_attachment rule table — `edge_kinds.knowledge_attachment.rules` in the JSON. Only the source / target node types that participate in this edge kind have entries (e.g. `tool_attachment` only has `agent` + `tool` rows). Use `ruleOf(src, tgt, kind)` or `rulesForKind(kind)[type]` with an `in` check — callers that look up by NodeType must handle the `undefined` case for non-participating types. */
+export const KNOWLEDGE_ATTACHMENT_RULES: Readonly<Partial<Record<NodeType, ConnectionRule>>> = {
   "agent": {
     allowed_source_types: new Set<NodeType>(["knowledge"]),
     allowed_target_types: new Set<NodeType>([]),
@@ -116,8 +116,8 @@ export const KNOWLEDGE_ATTACHMENT_RULES: Readonly<Record<NodeType, ConnectionRul
 },
 };
 
-/** tool_attachment rule table — `edge_kinds.tool_attachment.rules` in the JSON. */
-export const TOOL_ATTACHMENT_RULES: Readonly<Record<NodeType, ConnectionRule>> = {
+/** tool_attachment rule table — `edge_kinds.tool_attachment.rules` in the JSON. Only the source / target node types that participate in this edge kind have entries (e.g. `tool_attachment` only has `agent` + `tool` rows). Use `ruleOf(src, tgt, kind)` or `rulesForKind(kind)[type]` with an `in` check — callers that look up by NodeType must handle the `undefined` case for non-participating types. */
+export const TOOL_ATTACHMENT_RULES: Readonly<Partial<Record<NodeType, ConnectionRule>>> = {
   "agent": {
     allowed_source_types: new Set<NodeType>(["tool"]),
     allowed_target_types: new Set<NodeType>([]),

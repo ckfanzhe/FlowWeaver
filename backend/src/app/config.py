@@ -7,8 +7,6 @@ for the model constructor that runs strictly off the preset table.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -19,8 +17,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Postgres only — SQLite support removed (see plan
+    # [[gleaming-munching-grove]]). The default points at the
+    # `postgres` service in `docker-compose.yml`; for local dev
+    # outside compose, override via `AGNOBUILDER_DATABASE_URL` env
+    # var (e.g. `postgresql://localhost:5432/agnobuilder`).
     database_url: str = (
-        f"sqlite:///{Path(__file__).parent.parent / 'data' / 'agnobuilder.db'}"
+        "postgresql+psycopg://agnobuilder:agnobuilder@postgres:5432/agnobuilder"
     )
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"

@@ -239,8 +239,14 @@ export async function rehydratePausedSession(sessionId: string): Promise<void> {
     run.setPendingConfirmation({
       kind: 'ask',
       prompt,
-      choices,
-      toolCallId: null,
+      // `PendingConfirmation.choices` is `string[] | undefined`;
+      // `extractChoices` returns `string[] | null` (None means
+      // "no choice list"). Coerce `null` to `undefined` to drop
+      // the field rather than store a sentinel.
+      choices: choices ?? undefined,
+      // Both fields are `string | undefined` / `string[] | undefined`
+      // on `PendingConfirmation`. `null` would be a type error; omit.
+      toolCallId: undefined,
     })
   } catch {
     // Stale session id (page navigated elsewhere) is expected —

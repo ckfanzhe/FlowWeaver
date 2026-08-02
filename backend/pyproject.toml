@@ -11,6 +11,22 @@ dependencies = [
     "jinja2>=3.1.6",
     "openai>=3.0.0",
     "pydantic>=2.13.4",
+    # `psycopg[binary]` ships pre-built wheels for the Postgres
+    # driver (psycopg3) so we don't need a libpq-dev system dep in
+    # the docker image. The `[binary]` extra pulls in the wheel.
+    # Used only when `AGNOBUILDER_DATABASE_URL` is `postgresql+psycopg://...`
+    # (the docker-compose path). Local dev still uses SQLite.
+    "psycopg[binary]>=3.1",
+    # `pgvector` is the Python binding for Postgres' vector type.
+    # Required by `agno.vectordb.pgvector.PgVector` when a knowledge
+    # node selects `vectorDb='pgvector'`. The extension itself runs
+    # inside the Postgres container (`pgvector/pgvector:pg16` image,
+    # see `docker-compose.yml`); this package is the SQLAlchemy
+    # type adapter that lets Python emit / read `vector(...)`
+    # columns. Optional — only loaded when a user picks pgvector in
+    # the knowledge form (others fall back to lancedb / chroma
+    # which have their own Python deps).
+    "pgvector>=0.3",
     "python-multipart>=0.0.32",
     "sqlalchemy>=2.0.52",
     "uvicorn[standard]>=0.52.1",

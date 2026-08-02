@@ -1,24 +1,32 @@
-"""Pytest fixtures: isolated in-memory DB + FastAPI test client.
+"""Pytest fixtures: isolated Postgres DB + FastAPI test client.
 
 Each test gets:
-  - a fresh in-memory SQLite (function-scoped engine)
-  - a FastAPI TestClient with `get_db` dependency overridden to that engine
+  - a fresh Postgres schema (function-scoped engine) so tests can't
+    collide on shared rows. Schema-per-test is the cheapest Postgres
+    isolation strategy that still lets us share one connection pool.
+  - a FastAPI TestClient with `get_db` dependency overridden to that
+    schema's engine.
+
+Prereq: a running Postgres reachable at `AGNOBUILDER_TEST_DATABASE_URL`
+(or the default below points at the docker-compose `postgres` service
+on localhost:5432). The default user/db/password match
+`docker-compose.yml::postgres` + `.env.example::POSTGRES_*` so a plain
+`docker compose up postgres` followed by `pytest` works out of the box.
 """
 from __future__ import annotations
 
 import os
 
 # Suppress the lifespan-level seed writes to the production DB —
-# tests explicitly seed the in-memory DB via the `seeded` fixture.
+# tests explicitly seed the test DB via the `seeded` fixture.
 os.environ.setdefault("AGNOBUILDER_SKIP_SEED", "1")
 
 from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.db import models  # noqa: F401  (register models)
 from app.db.base import Base
@@ -26,17 +34,42 @@ from app.db.session import get_db
 from app.main import app
 
 
+# Default test URL — matches `docker-compose.yml::postgres` +
+# `.env.example::POSTGRES_USER/PASSWORD/DB`. Override with
+# `AGNOBUILDER_TEST_DATABASE_URL=postgresql://...` when CI's Postgres
+# is reachable under a different host.
+DEFAULT_TEST_DATABASE_URL = os.environ.get(
+    "AGNOBUILDER_TEST_DATABASE_URL",
+    "postgresql+psycopg://agnobuilder:agnobuilder@127.0.0.1:5432/agnobuilder",
+)
+
 @pytest.fixture()
 def engine():
-    """Per-test in-memory SQLite with a single shared connection."""
-    eng = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    """Per-test Postgres schema with drop+create on entry / exit.
+
+    Schema-per-test gives full isolation without paying the cost of
+    dropping / recreating every table. The connection URL is
+    rewritten to point at a unique schema name (`test_<pid>_<uuid8>`)
+    so parallel test workers + repeated runs in the same DB don't
+    collide. `Base.metadata.create_all` / `drop_all` then operate on
+    the schema-scoped metadata via the URL search path.
+    """
+    import uuid
+
+    schema = f"test_{os.getpid()}_{uuid.uuid4().hex[:8]}"
+    base_url = DEFAULT_TEST_DATABASE_URL
+    # Inject the schema via URL search_path so every connection
+    # targets the test schema. `options=-c search_path=...` is the
+    # portable Postgres incantation.
+    url = base_url + ("&" if "?" in base_url else "?") + f"options=-c%20search_path%3D{schema}"
+    eng = create_engine(url, echo=False)
+    with eng.begin() as conn:
+        conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
     Base.metadata.create_all(eng)
     yield eng
     Base.metadata.drop_all(eng)
+    with eng.begin() as conn:
+        conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE'))
     eng.dispose()
 
 

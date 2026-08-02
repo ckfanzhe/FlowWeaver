@@ -46,6 +46,7 @@ import '@xyflow/react/dist/style.css'
 import { useWorkflowStore, isConfigurable } from '../../store/workflowStore'
 import { flowEdge, flowNode, resyncRfEdges, resyncRfNodes } from './canvasNodes'
 import type { NodeType } from '../../types/workflow'
+import type { OnNodeDrag } from '@xyflow/react'
 import { customNodeTypes } from '../Nodes'
 import { CanvasContextMenu, type CanvasContextKind } from './CanvasContextMenu'
 import { NodePalette } from './NodePalette'
@@ -317,7 +318,7 @@ function CanvasInner() {
    * a node), before the per-tick position updates arrive. Cleared
    * in `onNodeDragStop`.
    */
-  const onNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
+  const onNodeDragStart = useCallback<OnNodeDrag>((_event, node) => {
     draggingIdsRef.current.add(node.id)
   }, [])
 
@@ -338,7 +339,7 @@ function CanvasInner() {
    * local position — visually identical in this case, but the
    * invariant "preserve = currently dragging" stays cleaner.
    */
-  const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
+  const onNodeDragStop = useCallback<OnNodeDrag>((_event, node) => {
     draggingIdsRef.current.delete(node.id)
     useWorkflowStore.setState((s) => ({
       nodes: s.nodes.map((x) =>

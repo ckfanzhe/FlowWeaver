@@ -1,0 +1,155 @@
+# AgnoBuilder — one-shot docker compose deployment.
+#
+# Usage:
+#   cp .env.example .env        # fill in OPENAI_API_KEY etc.
+#   docker compose up --build    # build images + start the stack
+#
+# Services:
+#   postgres — persistent Postgres 16 (alpine) for the backend.
+#              Data lives in the `pgdata` named volume; survives
+#              `docker compose down` (use `down -v` to wipe).
+#   backend  — FastAPI on :8880. Connects to Postgres via the
+#              `AGNOBUILDER_DATABASE_URL` env var (auto-injected from
+#              .env). Healthcheck on /health.
+#   frontend — Vite preview server on :4173, serving the static
+#              build from `frontend/dist`. `VITE_API_BASE` is baked
+#              in at build time (not runtime) via the build arg.
+#
+# Compose auto-creates a default network; `postgres` resolves as
+# the hostname from `backend` and `frontend`.
+
+services:
+  # ─────────────────────────────────────────────────────────────────
+  # Postgres + pgvector — persistent data store + RAG vector index
+  # ─────────────────────────────────────────────────────────────────
+  # `pgvector/pgvector:pg16` is the official pgvector image (drop-in
+  # replacement for `postgres:16-alpine`). It ships the `vector`
+  # extension pre-installed + pre-loaded so `CREATE EXTENSION vector`
+  # succeeds without a manual compile step. We share this single
+  # Postgres for BOTH the app's relational data
+  # (`AGNOBUILDER_DATABASE_URL` from the backend service below)
+  # AND the RAG knowledge nodes' vector store — pgvector puts
+  # tables in the configured schema (default `ai`), and the same
+  # connection URL works for both. No separate vector service needed.
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agnobuilder-postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Bind env_file vars into the postgres container's namespace
+      # (POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB are the
+      # standard postgres image bootstrap variables).
+      # `${VAR:-default}` syntax lets a fresh checkout boot without a
+      # `.env` file (compose fills in the demo defaults). A real
+      # deployment creates `.env` from `.env.example` and overrides
+      # with proper credentials.
+      POSTGRES_USER: ${POSTGRES_USER:-agnobuilder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agnobuilder}
+      POSTGRES_DB: ${POSTGRES_DB:-agnobuilder}
+      # Use the bundled `pg_healthcheck` user for `pg_isready` below.
+      PGUSER: ${POSTGRES_USER:-agnobuilder}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-agnobuilder}
+    volumes:
+      # Named volume survives `docker compose down`; `down -v` wipes.
+      - pgdata:/var/lib/postgresql/data
+    # Postgres listens on :5432 internally; we deliberately do NOT
+    # publish :5432 to the host — only the backend container needs
+    # access via the compose network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ─────────────────────────────────────────────────────────────────
+  # Backend — FastAPI on :8880
+  # ─────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      # Build context is the project root (not `./backend`) so the
+      # Dockerfile can COPY `shared/` (which lives at the repo
+      # root, sibling to `backend/`). The Dockerfile itself lives
+      # at `backend/Dockerfile` — all COPY paths are prefixed
+      # `backend/...` to resolve against this root context.
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: agnobuilder-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Override `AGNOBUILDER_DATABASE_URL` with the compose-network
+      # URL (host = `postgres` service name). `:?`/`:-agnobuilder`
+      # defaults mirror the postgres service above so a fresh
+      # checkout (no `.env`) still resolves every interpolation
+      # cleanly — compose v2 otherwise warns "Defaulting to a
+      # blank string" for each missing var.
+      AGNOBUILDER_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-agnobuilder}:${POSTGRES_PASSWORD:-agnobuilder}@postgres:5432/${POSTGRES_DB:-agnobuilder}
+      # In-container data dir (kept for parity with `start.sh`'s SQLite
+      # path; not used under Postgres but harmless if init_db ever
+      # switches backends at runtime).
+      AGNOBUILDER_DATA_DIR: /app/backend/data
+      # CORS origins for the preview-server frontend. The default
+      # in `config.py` covers Vite dev (5173) only; docker uses
+      # `vite preview` on 4173 so we explicitly add both loopback
+      # hostnames. Wildcard `*` would be too permissive — keep
+      # explicit origins so the cors-preflight response echoes them.
+      AGNOBUILDER_CORS_ORIGINS: http://localhost:4173,http://127.0.0.1:4173
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # host:container. Compose 2 lets us use the long form for
+      # clarity; behaviour is identical to `8880`.
+      - "8880:8880"
+    volumes:
+      # Mount a host dir so logs + any future SQLite fallback persist
+      # across rebuilds. The Postgres data is on the `pgdata` named
+      # volume above; this is for the backend's own artefacts only.
+      - ./backend/data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8880/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  # ─────────────────────────────────────────────────────────────────
+  # Frontend — Vite preview on :4173 (serves prebuilt static bundle)
+  # ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      # `VITE_API_BASE` is a BUILD-TIME variable — Vite bakes
+      # `import.meta.env.VITE_API_BASE` into the JS bundle at
+      # `npm run build`. So this MUST be passed as a build `arg:`,
+      # not a runtime `environment:` entry. The host (`backend`) is
+      # the compose-network hostname, not `localhost` — the frontend
+      # runs in a separate container.
+      args:
+        # Browser-side URL. Even though compose-internal traffic
+        # uses the `backend` hostname, the JS bundle runs inside
+        # the browser (host machine), not inside the container —
+        # so we must use `localhost:8880` (which compose's port
+        # mapping exposes). Backend's :8880 → host's :8880.
+        VITE_API_BASE: http://localhost:8880
+    container_name: agnobuilder-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "4173:4173"
+    healthcheck:
+      # `vite preview` returns 200 on GET / for the index.html shell.
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4173/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+volumes:
+  pgdata:
+    driver: local

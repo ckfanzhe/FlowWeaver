@@ -80,7 +80,7 @@ export interface ConnectionError {
   message: string;
 }
 
-type RuleTable = Readonly<Record<NodeType, ConnectionRule>>;
+type RuleTable = Readonly<Partial<Record<NodeType, ConnectionRule>>>;
 
 function typeOf(node: WorkflowNode): NodeType {
   return node.type as NodeType;

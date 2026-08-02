@@ -84,6 +84,13 @@ export type {
   ConditionEvaluator,
   LoopNodeConfig,
   AskConfig,
+  // : RAG / knowledge source. New 7th base
+  // node type. Lives in `node-configs.generated.ts` (parallel to
+  // the tool/branch/flow collapses above). `KnowledgeSource` is
+  // the per-source entry inside `KnowledgeNodeConfig::sources[]`
+  // — same export surface so existing imports keep working.
+  KnowledgeNodeConfig,
+  KnowledgeSource,
   NodeConfig,
 } from './node-configs.generated'
 
@@ -161,13 +168,15 @@ export interface WorkflowEdge {
   sourceHandle?: string;     // router/parallel: branch id
   targetHandle?: string;
   /**
-   * Edge kind () — drives which rule table the
-   * frontend validator uses. Default `dataflow` is the existing
-   * control-flow edge; `tool_attachment` is the new `tool-source →
-   * agent` wiring that replaces cfg.toolsRef. Leave unset for legacy /
-   * template edges so the validator falls back to `dataflow`.
+   * Edge kind — drives which rule table the frontend validator
+   * uses. `dataflow` is the default control-flow edge;
+   * `tool_attachment` is the `tool-source → agent` wiring that
+   * replaced `cfg.toolsRef`; `knowledge_attachment` is the RAG
+   * `knowledge → agent` wiring for the agent's `knowledge=...`
+   * parameter. New in [[gleaming-munching-grove]]. Leave unset for
+   * legacy / template edges so the validator falls back to `dataflow`.
    */
-  kind?: 'dataflow' | 'tool_attachment';
+  kind?: 'dataflow' | 'tool_attachment' | 'knowledge_attachment';
 }
 
 export interface Workflow {

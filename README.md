@@ -27,19 +27,59 @@ First open-source release. The runtime, IR, serializer, event adapter, chat buil
 
 ## Quick start
 
+The platform is Postgres-only (SQLite was dropped in v1.5). For a self-contained Postgres + backend + frontend stack, prefer the Docker Compose path below. For local dev:
+
 ```bash
-# Backend (port 8880)
+# 1. Bring up Postgres (one of):
+docker compose up -d postgres           # compose-managed Postgres
+# OR a local Postgres on 127.0.0.1:5432 with user=agnobuilder db=agnobuilder
+
+# 2. Backend (port 8880)
 cd backend
 uv sync
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8880 --app-dir src --reload
 
-# Frontend (port 5173)
+# 3. Frontend (port 5173) — in another terminal
 cd frontend
 npm install
 npm run dev
 ```
 
 Open http://localhost:5173. The first-time flow has the user identify via email (no password — FlowWeaver is for internal-network deployment).
+
+## Docker Compose (one-shot deployment)
+
+For a fully containerised stack (Postgres + FastAPI + Vite preview frontend), copy the example env file and run compose:
+
+```bash
+cp .env.example .env          # fill in any provider keys if needed
+docker compose up --build      # builds 3 images + starts the stack
+```
+
+**`.env` is optional.** All compose variables have built-in defaults (`${POSTGRES_USER:-agnobuilder}` etc.), so `docker compose up` works without a `.env` file — you'll just see two harmless warnings at startup:
+
+```text
+WARN[...] The "POSTGRES_USER" variable is not set. Defaulting to a blank string.
+env file .../.env not found
+```
+
+Silencing them: `cp .env.example .env` and (optionally) edit `POSTGRES_PASSWORD` to something other than the demo default. The warnings disappear once the file exists.
+
+**Permission denied at the docker socket?** If `docker compose up` errors with `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`, your user isn't in the `docker` group. See the [Troubleshooting](#troubleshooting-docker-permission-denied) section below.
+
+Once the healthchecks turn green:
+
+| Service | URL | Notes |
+| --- | --- | --- |
+| Frontend | http://localhost:4173 | Vite preview serving the static bundle |
+| Backend | http://localhost:8880 | FastAPI; `GET /health` → `{"status":"healthy"}` |
+| Postgres | (internal only) | Data persists in the `pgdata` named volume |
+
+`docker compose down` stops and removes the containers (data stays in `pgdata`). `docker compose down -v` also wipes the database.
+
+The compose stack uses **Postgres** — same as the local `start.sh` path (Postgres-only since v1.5; SQLite was dropped). `start.sh` reads `AGNOBUILDER_DATABASE_URL` from `.env` and expects a Postgres reachable at that URL; compose supplies the URL via the `postgres` service in `docker-compose.yml`. LLM credentials are still configured via the in-app Settings → LLM Models panel after first start (the `.env` file is not read for credentials by the runtime).
+
+`./start.sh` and `docker compose up` are independent paths — pick one. Use `start.sh` for hot-reload local development, `docker compose up` for a self-contained stack (demo deploys, CI, internal-network rollout).
 
 ## Configuring an LLM provider
 
@@ -71,7 +111,7 @@ Model:   Qwen3-8B
        │ SSE
        ▼
 ┌──────────────┐  agno 2.x workflow    ┌──────────────────┐
-│  Runtime API │  ──────────────────▶  │ SQLite + sessions │
+│  Runtime API │  ──────────────────▶  │ Postgres + sessions │
 │   (FastAPI)  │   event-stream SSE     │  (SQLAlchemy)    │
 └──────────────┘                        └──────────────────┘
        ▲
@@ -116,8 +156,35 @@ scripts/    # Repo-level dev / CI utilities
 
 - **Single-engine runtime** — every run goes through one agno workflow. No parallel state machines, no mirror channels.
 - **Declarative node types** — every node is one JSON manifest entry + one strategy class. Adding a node is ~3 files.
-- **Two-tier session store** — in-memory hot cache + SQLite cold store. The session survives process restart; cross-restart pause-state surfaces a clean 409 with a re-trigger hint.
+- **Two-tier session store** — in-memory hot cache + Postgres cold store. The session survives process restart; cross-restart pause-state surfaces a clean 409 with a re-trigger hint.
 - **Chat builder** — natural-language edits flow through a staged diff + strict validation pipeline. Apply is atomic; rollback is automatic on validation failure.
+
+## Troubleshooting
+
+### `docker compose up`: `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`
+
+The current shell user is not in the `docker` group, so the Docker CLI can't reach the daemon socket. Fix once per machine:
+
+```bash
+# 1. Add yourself to the docker group (requires sudo).
+sudo usermod -aG docker "$USER"
+
+# 2a. Either log out + log back in (permanent — applies to new shells), or
+# 2b. open a brand-new login shell (e.g. `newgrp docker` in the current one).
+
+# 3. Verify — should print the docker version, NOT error.
+docker ps
+```
+
+Linux distro notes:
+
+- **Ubuntu / Debian**: the docker daemon install typically creates the `docker` group automatically; `usermod -aG docker $USER` is enough.
+- **Fedora / RHEL / CentOS Stream**: same as Ubuntu; `docker` group is created by the Docker CE RPM.
+- **Arch / Manjaro**: same; package `docker` ships the group.
+- **WSL2 (Windows host with Docker Desktop)**: Docker Desktop auto-configures the WSL distro's docker group; if `docker ps` still errors, restart Docker Desktop and reopen the WSL terminal.
+- **Raspberry Pi OS / Debian ARM**: same; ensure `sudo` is installed.
+
+If `docker ps` still errors post-reboot, check group membership with `id "$USER"` — `docker` should be listed. If not, repeat step 1; if it is and still fails, your Docker daemon socket may live at a non-default path — set `DOCKER_HOST` per the Docker docs.
 
 ## License
 

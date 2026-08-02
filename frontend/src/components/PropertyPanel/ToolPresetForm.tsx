@@ -83,7 +83,11 @@ export function ToolPresetForm({ nodeId }: { nodeId: string }) {
           <Field label={t('panel.toolPreset.toolkitOptions')}>
             <JsonField
               value={v ?? {}}
-              onChange={set}
+              // NodeDataField's `set` is typed `(v: T) => void` and
+              // JsonField wants `(v: unknown) => void`; TS contravariance
+              // rejects the assignment. The runtime accepts either —
+              // the JSON content is whatever the user typed.
+              onChange={set as (v: unknown) => void}
               placeholder='{"api_key": "..."}'
               rows={4}
             />

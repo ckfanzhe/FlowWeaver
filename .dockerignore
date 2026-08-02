@@ -1,0 +1,66 @@
+# AgnoBuilder docker build context exclusions.
+#
+# This file is loaded by Docker when building ANY service in
+# `docker-compose.yml` (the build context is `./` at the project
+# root). Keeping it small + complete shaves build time and avoids
+# shipping secrets / heavy artefacts into images.
+#
+# `.env` is excluded so a developer can fill `.env` for local dev
+# without leaking it into the build context. `docker-compose.yml`
+# re-injects the right vars explicitly via `env_file:` and `args:`.
+
+# ─────────────────────────────────────────────────────────────────
+# Python (backend/)
+# ─────────────────────────────────────────────────────────────────
+.venv/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/data/
+backend/.runtime/
+backend/.pytest_cache/
+backend/.venv.bak/
+backend/alembic/versions/
+
+# ─────────────────────────────────────────────────────────────────
+# Node (frontend/)
+# ─────────────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+frontend/.tsbuildinfo*
+
+# ─────────────────────────────────────────────────────────────────
+# Git + IDE + logs (never want in a container image)
+# ─────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+.idea/
+.vscode/
+.DS_Store
+*.log
+*.swp
+*.swo
+
+# ─────────────────────────────────────────────────────────────────
+# Project-level artefacts (debug_server, runtime logs, local env)
+# ─────────────────────────────────────────────────────────────────
+.runtime/
+debug_server/__pycache__/
+
+# Secrets — never bake into image layers. Compose re-injects from
+# the host's `.env` via `env_file:`.
+.env
+.env.*
+!.env.example
+
+# Documentation + scripts not needed in the image
+*.md
+!backend/README.md
+!frontend/README.md
+LICENSE
+CONTRIBUTING.md
+images/
+docs/

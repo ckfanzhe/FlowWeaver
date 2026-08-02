@@ -36,7 +36,7 @@ import type {
   LoopNodeConfig,
   ToolNodeConfig,
 } from '../../types/workflow'
-import type { BranchMode, NodeType } from '../../types/workflow'
+import type { BranchMode } from '../../types/workflow'
 
 interface DataBag {
   label: string

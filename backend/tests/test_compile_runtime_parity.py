@@ -50,6 +50,8 @@ from typing import Any
 
 import pytest
 
+from .conftest import DEFAULT_TEST_DATABASE_URL
+
 # `seeded_default_preset` lives in `conftest.py` — it stubs
 # `Claude.invoke_stream` so the agent's "LLM call" returns a canned
 # `[label] echo: input` payload regardless of whether the Agent was
@@ -261,9 +263,8 @@ def _run_path_b(template_id: str) -> list[str]:
     adapter during the stream), stub `user_input`, and call
     `mod.workflow.continue_run(...)` directly.
     """
-    from sqlalchemy import create_engine
-    from sqlalchemy.pool import StaticPool
-    from agno.db.sqlite import SqliteDb
+    from sqlalchemy import create_engine, text
+    from agno.db.postgres import PostgresDb
 
     from app.core.compile.run import extract_node_types
     from app.core.compile.serialize import to_python_source
@@ -287,12 +288,17 @@ def _run_path_b(template_id: str) -> list[str]:
     # The export omits `db=` and `cache_session=True` to keep the
     # generated file self-contained. For parity testing the resume
     # leg needs both — restore them on the exec'd workflow.
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    mod.workflow.db = SqliteDb(db_engine=engine)
+    # `PostgresDb` requires a dedicated schema; we create one per
+    # test (mirrors the conftest fixture's per-test schema pattern).
+    # Postgres backend doesn't need `StaticPool` / `check_same_thread`
+    # — psycopg's connection pool handles FastAPI's threadpool out
+    # of the box.
+    import uuid as _uuid
+    schema = f"parityb_{_uuid.uuid4().hex[:8]}"
+    engine = create_engine(DEFAULT_TEST_DATABASE_URL)
+    with engine.begin() as conn:
+        conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
+    mod.workflow.db = PostgresDb(db_engine=engine, db_schema=schema)
     mod.workflow.cache_session = True
 
     # Mirror path A's runtime session bookkeeping so EventAdapter

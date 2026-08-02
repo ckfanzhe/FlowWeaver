@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -25,7 +25,7 @@ class Workflow(Base):
     # PUT/PATCH/DELETE them. `category` groups templates in the gallery
     # (e.g. "starter", "branching", "loop", "tools").
     is_template: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="0"
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
     category: Mapped[str | None] = mapped_column(String, nullable=True)
     # Locale tag (added ). Mirrors the value in the JSON's
@@ -120,7 +120,7 @@ class LlmPreset(Base):
     # — opt-in per preset (the Settings drawer has a button-style
     # toggle per row) instead of a single global preference.
     thinking: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="0"
+        Boolean, nullable=False, default=False, server_default=text("false")
     )
 
     # Per-user binding : NULL = system row (shared,

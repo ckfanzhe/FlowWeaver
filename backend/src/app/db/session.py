@@ -2,17 +2,18 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
 
-# `check_same_thread=False` is required for SQLite to work with FastAPI's threadpool.
+# Postgres-only runtime (SQLite support dropped — see plan
+# [[gleaming-munching-grove]] §"step 5: remove SQLite"). No
+# `check_same_thread` shim needed; psycopg's default pool plays
+# nicely with FastAPI's threadpool out of the box.
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False},
     echo=False,
 )
 
@@ -30,17 +31,32 @@ def init_db() -> None:
     """Create all tables + run idempotent light migrations. Safe on every startup.
 
     `create_all()` only adds new tables, not new columns to existing ones,
-    so we also probe a few `PRAGMA table_info` columns and `ALTER TABLE` if
-    they're missing. This is the project's "migrations" layer — no Alembic
-    to keep the demo self-contained.
+    so we probe a few columns via SQLAlchemy `inspect()` (which dispatches
+    to `information_schema` for Postgres and `PRAGMA table_info` for
+    SQLite) and `ALTER TABLE` if they're missing. This is the project's
+    "migrations" layer — no Alembic to keep the demo self-contained.
+
+    On Postgres we also enable the `vector` extension (pgvector) so
+    RAG knowledge nodes can pick `vectorDb='pgvector'` and reuse this
+    same connection — see `docker-compose.yml::postgres.image` for the
+    image that ships it pre-installed. The extension is a no-op on
+    the SQLite path.
     """
     # Import models so they register on the metadata before create_all.
     from app.db import models  # noqa: F401
     from app.db.base import Base
 
-    # Ensure SQLite file parent exists.
-    if engine.url.database and engine.url.database != ":memory:":
-        Path(engine.url.database).parent.mkdir(parents=True, exist_ok=True)
+    # pgvector extension is required by `agno.vectordb.pgvector.PgVector`
+    # when a knowledge node selects `vectorDb='pgvector'`. The
+    # extension ships pre-installed in the `pgvector/pgvector:pg16`
+    # image but Postgres doesn't auto-enable it per-database — we
+    # need to `CREATE EXTENSION vector` once on first boot.
+    # `IF NOT EXISTS` makes this idempotent across restarts.
+    # Superuser-only operation; the `agnobuilder` user in the
+    # compose stack is a superuser (set via `POSTGRES_USER`).
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
 
     Base.metadata.create_all(bind=engine)
 
