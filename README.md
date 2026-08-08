@@ -67,6 +67,44 @@ Silencing them: `cp .env.example .env` and (optionally) edit `POSTGRES_PASSWORD`
 
 **Permission denied at the docker socket?** If `docker compose up` errors with `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`, your user isn't in the `docker` group. See the [Troubleshooting](#troubleshooting-docker-permission-denied) section below.
 
+### Internal-network / LAN deployment
+
+The compose stack is configured for **internal-network deployment** by default — see [[agnobuilder-internal-only]] for the security model. Out of the box:
+
+- **Backend** binds `0.0.0.0:8880` (already LAN-reachable).
+- **Frontend (vite preview)** binds `0.0.0.0:4173`.
+- **`VITE_API_BASE`** is left empty in `docker-compose.yml` — the JS bundle auto-detects via `window.location.hostname` so the same image works on any host the user types in their browser (`http://192.168.1.10:4173`, `http://mybox.local:4173`, etc.) without rebuilding.
+- **`AGNOBUILDER_CORS_ORIGINS=*`** enables wildcard CORS for the trusted internal network (the platform's `identify` flow uses a header token, not a cookie, so disabling `allow_credentials` alongside the wildcard doesn't break auth).
+
+Workflow for a multi-machine LAN deploy:
+
+```bash
+# 1. One machine runs the stack
+docker compose up -d --build
+# Find the host's LAN IP (e.g. `192.168.1.10`)
+
+# 2. From any other machine on the same LAN, open the browser to:
+#    http://192.168.1.10:4173
+#    The frontend auto-detects the hostname and calls the backend at
+#    http://192.168.1.10:8880 — same build, no extra config.
+
+# 3. If the LAN has a DNS name (e.g. `mybox.local`), browsers on
+#    other machines can use that instead of the IP:
+#    http://mybox.local:4173  →  API at http://mybox.local:8880
+```
+
+For production-public deploys, tighten `AGNOBUILDER_CORS_ORIGINS` to an explicit list:
+
+```bash
+AGNOBUILDER_CORS_ORIGINS=https://app.example.com
+```
+
+The `docker-compose.yml` `frontend.build.args.VITE_API_BASE` field can be set to a fixed URL when running behind a reverse proxy that serves frontend + backend on different hostnames (e.g. `https://api.example.com` for the API while the frontend lives at `https://app.example.com`). Leave empty for the LAN default.
+
+### Host port mapping
+
+`docker-compose.yml` exposes backend on `8880` and frontend on `4173`. If those collide with other services on the host, change the left side of the `:8880` and `:4173` port mappings (the right side is the in-container port — don't change it unless you also change the frontend `preview.port` + the auto-detect's `8880` constant in `api/client.ts`).
+
 Once the healthchecks turn green:
 
 | Service | URL | Notes |

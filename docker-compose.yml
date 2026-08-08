@@ -95,7 +95,13 @@ services:
       # `vite preview` on 4173 so we explicitly add both loopback
       # hostnames. Wildcard `*` would be too permissive — keep
       # explicit origins so the cors-preflight response echoes them.
-      AGNOBUILDER_CORS_ORIGINS: http://localhost:4173,http://127.0.0.1:4173
+      # `*` = wildcard CORS for internal-network LAN mode (per
+      # [[agnobuilder-internal-only]] security model). Backend
+      # disables `allow_credentials` automatically when wildcard
+      # is in effect (CORS spec requirement). For production-public
+      # deploys, replace `*` with an explicit comma-separated list
+      # of trusted frontend origins.
+      AGNOBUILDER_CORS_ORIGINS: '*'
     depends_on:
       postgres:
         condition: service_healthy
@@ -129,12 +135,14 @@ services:
       # the compose-network hostname, not `localhost` — the frontend
       # runs in a separate container.
       args:
-        # Browser-side URL. Even though compose-internal traffic
-        # uses the `backend` hostname, the JS bundle runs inside
-        # the browser (host machine), not inside the container —
-        # so we must use `localhost:8880` (which compose's port
-        # mapping exposes). Backend's :8880 → host's :8880.
-        VITE_API_BASE: http://localhost:8880
+        # Browser-side URL. When LEFT EMPTY (the docker default),
+        # the bundle auto-detects via `window.location.hostname`
+        # and points at `:8880` — same-origin host means LAN deploys
+        # (`http://192.168.1.10:4173` → API at `:8880`) work without
+        # rebuilding. Set this arg to a fixed URL only when running
+        # behind a reverse proxy that serves frontend + backend on
+        # different hostnames (e.g. `https://api.example.com`).
+        VITE_API_BASE:
     container_name: agnobuilder-frontend
     restart: unless-stopped
     depends_on:

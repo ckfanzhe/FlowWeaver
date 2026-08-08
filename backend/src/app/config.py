@@ -26,10 +26,23 @@ class Settings(BaseSettings):
         "postgresql+psycopg://agnobuilder:agnobuilder@postgres:5432/agnobuilder"
     )
 
+    # Comma-separated CORS origins. Special value `*` enables a
+    # wildcard (`allow_origins=["*"]`) suitable for internal-network
+    # deployments (LAN, single-tenant VPC) where the platform
+    # assumes a trusted boundary per
+    # [[agnobuilder-internal-only]]. Production-public deploys should set
+    # an explicit list (e.g. `https://app.example.com`).
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        raw = self.cors_origins.strip()
+        if raw == "*":
+            return ["*"]
+        return [o.strip() for o in raw.split(",") if o.strip()]
+
+    @property
+    def cors_allow_all(self) -> bool:
+        return "*" in self.cors_origin_list
 
 settings = Settings()

@@ -344,7 +344,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_credentials=True,
+    # `allow_credentials=True` + `allow_origins=["*"]` is rejected
+    # by CORS spec (browsers refuse the wildcard when creds are on).
+    # When the wildcard is in effect (internal-network LAN mode),
+    # disable credentials so the middleware accepts the config; the
+    # platform's `identify` flow uses a header token, not a cookie,
+    # so disabling creds here doesn't break auth.
+    allow_credentials=not settings.cors_allow_all,
     allow_methods=["*"],
     allow_headers=["*"],
     # Expose SSE-protocol headers so the browser's fetch() lets us read

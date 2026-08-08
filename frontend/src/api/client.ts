@@ -30,9 +30,29 @@ function readUserId(): string | null {
 // (instead of module load) keeps this file importable from Node-side
 // tools (tests via tsx, etc.) without a `import.meta.env` polyfill —
 // the default kicks in when Vite isn't present.
+//
+// Resolution order:
+//   1. Explicit `VITE_API_BASE` env (set at build time, e.g.
+//      `VITE_API_BASE=http://api.example.com`).
+//   2. **Auto-detect from `window.location`** when the env var is
+//      empty / unset — the browser's current origin hostname with
+//      the API port (`8888`). Lets the same build serve any host
+//      (LAN deploy, reverse proxy, localhost) without rebuilding.
+//      Only runs in the browser; Node-side callers fall through to
+//      the localhost default.
 function readBase(): string {
   const env = (import.meta as { env?: Record<string, string> }).env
-  return env?.VITE_API_BASE ?? 'http://localhost:8880'
+  const explicit = env?.VITE_API_BASE?.trim()
+  if (explicit) return explicit
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const proto = window.location.protocol === 'https:' ? 'https' : 'http'
+    // `window.location.hostname` is the bare hostname the browser
+    // used to reach us — no scheme / port / path. Append `:8880`
+    // for the backend's mapped port. The compose stack exposes
+    // 8880 on the host; LAN deployments do the same.
+    return `${proto}://${window.location.hostname}:8880`
+  }
+  return 'http://localhost:8880'
 }
 
 export class ApiError extends Error {
