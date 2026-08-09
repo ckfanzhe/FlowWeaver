@@ -65,7 +65,6 @@ env file .../.env not found
 
 Silencing them: `cp .env.example .env` and (optionally) edit `POSTGRES_PASSWORD` to something other than the demo default. The warnings disappear once the file exists.
 
-**Permission denied at the docker socket?** If `docker compose up` errors with `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`, your user isn't in the `docker` group. See the [Troubleshooting](#troubleshooting-docker-permission-denied) section below.
 
 ### Internal-network / LAN deployment
 
@@ -197,32 +196,6 @@ scripts/    # Repo-level dev / CI utilities
 - **Two-tier session store** — in-memory hot cache + Postgres cold store. The session survives process restart; cross-restart pause-state surfaces a clean 409 with a re-trigger hint.
 - **Chat builder** — natural-language edits flow through a staged diff + strict validation pipeline. Apply is atomic; rollback is automatic on validation failure.
 
-## Troubleshooting
-
-### `docker compose up`: `permission denied while trying to connect to the docker API at unix:///var/run/docker.sock`
-
-The current shell user is not in the `docker` group, so the Docker CLI can't reach the daemon socket. Fix once per machine:
-
-```bash
-# 1. Add yourself to the docker group (requires sudo).
-sudo usermod -aG docker "$USER"
-
-# 2a. Either log out + log back in (permanent — applies to new shells), or
-# 2b. open a brand-new login shell (e.g. `newgrp docker` in the current one).
-
-# 3. Verify — should print the docker version, NOT error.
-docker ps
-```
-
-Linux distro notes:
-
-- **Ubuntu / Debian**: the docker daemon install typically creates the `docker` group automatically; `usermod -aG docker $USER` is enough.
-- **Fedora / RHEL / CentOS Stream**: same as Ubuntu; `docker` group is created by the Docker CE RPM.
-- **Arch / Manjaro**: same; package `docker` ships the group.
-- **WSL2 (Windows host with Docker Desktop)**: Docker Desktop auto-configures the WSL distro's docker group; if `docker ps` still errors, restart Docker Desktop and reopen the WSL terminal.
-- **Raspberry Pi OS / Debian ARM**: same; ensure `sudo` is installed.
-
-If `docker ps` still errors post-reboot, check group membership with `id "$USER"` — `docker` should be listed. If not, repeat step 1; if it is and still fails, your Docker daemon socket may live at a non-default path — set `DOCKER_HOST` per the Docker docs.
 
 ## License
 

@@ -3,54 +3,60 @@
  *
  * Parallel to `ToolForm` (mode-aware dispatcher). Three section layout:
  *   1. Identity + behaviour (`name`, `maxResults`, `addKnowledgeToContext`).
- *   2. Vector DB picker (lancedb | pgvector | chroma) + per-backend
- *      fields below.
- *   3. Embedder picker (openai | sentence_transformers | cohere) +
- *      per-embedder fields below.
+ *   2. pgvector config (DB URL / table name / schema).
+ *   3. OpenAI embedder config (model id / API key / base URL).
  *   4. Sources list (`+ Add` row → path/url/text with optional reader).
  *
- * The vector DB / embedder discriminators live in local state so the
- * conditional sub-form render is synchronous with the user's picker
- * change (the underlying `useWorkflowStore` write is async). Same
- * `useEffect`-sync pattern as `useSource` in ToolForm (line 48).
+ * v1 ships a single hard-coded backend stack (locked 2026-08-25):
+ *   - vectorDb: 'pgvector' — shares the docker-compose Postgres
+ *     (`pgvector/pgvector:pg16`).
+ *   - embedder: 'openai' — OpenAI / Azure / any OpenAI-compatible
+ *     endpoint (vLLM, LocalAI) via `openaiBaseUrl`.
  *
- * No preset-discriminator collapse for knowledge — the schema keeps
- * a flat `vectorDb` + `embedder` discriminator pair; no per-backend
- * preset rows in the manifest. Adding a backend = adding a Literal
- * member + a row here, not a new node type.
+ * The `vectorDb` + `embedder` discriminator fields are still written
+ * to the store on every save (for forward-compat with the schema —
+ * adding a future second backend widens the `Literal[...]` and the
+ * picker is restored in one place). They are hidden in the UI today
+ * (no picker); the canonical values `'pgvector'` and `'openai'` are
+ * injected on mount.
  */
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useWorkflowStore } from '../../store/workflowStore'
 import { useT } from '../../i18n'
 import type { KnowledgeNodeConfig, KnowledgeSource } from '../../types/workflow'
 import { Field, NodeDataField } from './primitives'
 
-type VectorDb = KnowledgeNodeConfig['vectorDb']
-type Embedder = KnowledgeNodeConfig['embedder']
 type SourceType = KnowledgeSource['type']
 
-function useLocalMirror<T>(storeValue: T): [T, (v: T) => void] {
-  const [v, setV] = useState<T>(storeValue)
-  useEffect(() => {
-    setV(storeValue)
-  }, [storeValue])
-  return [v, setV]
-}
+// v1 only — the discriminator is collapsed to a single value. Kept as
+// a constant so the literal matches the schema's `Literal["pgvector"]`
+// (a wider cast would widen to `string` otherwise).
+const V1_VECTOR_DB = 'pgvector' as const
+const V1_EMBEDDER = 'openai' as const
 
 export function KnowledgeForm({ nodeId }: { nodeId: string }) {
   const t = useT()
-  // `vectorDb` / `embedder` discriminators live in local state so the
-  // conditional sub-form renders synchronously with picker changes.
-  const storeVectorDb = useWorkflowStore((s) => {
-    const n = s.nodes.find((nn) => nn.id === nodeId)
-    return (n?.data?.config as KnowledgeNodeConfig | undefined)?.vectorDb ?? 'lancedb'
-  })
-  const storeEmbedder = useWorkflowStore((s) => {
-    const n = s.nodes.find((nn) => nn.id === nodeId)
-    return (n?.data?.config as KnowledgeNodeConfig | undefined)?.embedder ?? 'openai'
-  })
-  const [vectorDb, setVectorDb] = useLocalMirror<VectorDb>(storeVectorDb)
-  const [embedder, setEmbedder] = useLocalMirror<Embedder>(storeEmbedder)
+  // Seed the store with the v1-only discriminator values on mount so
+  // any export / downstream consumer sees a consistent `vectorDb` +
+  // `embedder` even though the picker is hidden. (The form's previous
+  // version had a `<select>` picker that lived in local state — v1
+  // has no picker, so the only mutation is the mount-time seed.)
+  useEffect(() => {
+    const cfg = ((useWorkflowStore.getState().nodes.find((n) => n.id === nodeId)?.data?.config ?? {}) as Record<string, unknown>)
+    const merged = structuredClone(cfg)
+    let dirty = false
+    if (merged.vectorDb !== V1_VECTOR_DB) {
+      merged.vectorDb = V1_VECTOR_DB
+      dirty = true
+    }
+    if (merged.embedder !== V1_EMBEDDER) {
+      merged.embedder = V1_EMBEDDER
+      dirty = true
+    }
+    if (dirty) {
+      useWorkflowStore.getState().updateNodeData(nodeId, { config: merged })
+    }
+  }, [nodeId])
 
   const sources = useWorkflowStore((s) => {
     const n = s.nodes.find((nn) => nn.id === nodeId)
@@ -127,267 +133,95 @@ export function KnowledgeForm({ nodeId }: { nodeId: string }) {
         )}
       </NodeDataField>
 
-      {/* ── Vector DB ─────────────────────────────────────────────── */}
-      <Field label={t('panel.knowledge.vectorDb')}>
-        <select
-          className="input"
-          value={vectorDb}
-          onChange={(e) => {
-            const v = e.target.value as VectorDb
-            setVectorDb(v)
-            // Mirror to the store so `node.data.config.vectorDb` is
-            // consistent. The local-state copy above mirrors it back
-            // on next render (useEffect).
-            const cfg = ((useWorkflowStore.getState().nodes.find((n) => n.id === nodeId)?.data?.config ?? {}) as Record<string, unknown>)
-            const merged = structuredClone(cfg)
-            merged.vectorDb = v
-            update(nodeId, { config: merged })
-          }}
-        >
-          <option value="lancedb">lancedb (default)</option>
-          <option value="pgvector">pgvector</option>
-          <option value="chroma">chroma</option>
-        </select>
-      </Field>
+      {/* ── Vector DB — v1 ships pgvector only ─────────────────────── */}
+      {/* The picker is hidden: the schema keeps the `vectorDb` field
+          (Literal["pgvector"]) for forward-compat, but the UI never
+          asks the user — `pgvector` is the only supported backend. */}
+      <div className="rounded border border-teal-200/60 px-2 py-1 text-[11px] dark:border-teal-900">
+        <span className="font-semibold">pgvector</span>
+        <span className="opacity-60"> · {t('panel.knowledge.pgvectorBackendHint')}</span>
+      </div>
 
-      {vectorDb === 'lancedb' && (
-        <>
-          <NodeDataField<string> nodeId={nodeId} path={['lancedbUri']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.lancedbUri')}>
-                <input
-                  className="input font-mono text-[11px]"
-                  value={value ?? '/tmp/lancedb'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['lancedbTableName']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.lancedbTableName')}>
-                <input
-                  className="input"
-                  value={value ?? 'agno_kb'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-        </>
-      )}
+      <NodeDataField<string> nodeId={nodeId} path={['pgvectorDbUrl']}>
+        {(value, set) => (
+          <Field label={t('panel.knowledge.pgvectorDbUrl')}>
+            <input
+              className="input font-mono text-[11px]"
+              value={value ?? ''}
+              onChange={(e) => set(e.target.value)}
+              placeholder="postgresql://user:pass@host:5432/db"
+            />
+          </Field>
+        )}
+      </NodeDataField>
+      <NodeDataField<string> nodeId={nodeId} path={['pgvectorTableName']}>
+        {(value, set) => (
+          <Field label={t('panel.knowledge.pgvectorTableName')}>
+            <input
+              className="input"
+              value={value ?? 'agno_kb'}
+              onChange={(e) => set(e.target.value)}
+            />
+          </Field>
+        )}
+      </NodeDataField>
+      <NodeDataField<string> nodeId={nodeId} path={['pgvectorSchema']}>
+        {(value, set) => (
+          <Field label={t('panel.knowledge.pgvectorSchema')}>
+            <input
+              className="input"
+              value={value ?? 'ai'}
+              onChange={(e) => set(e.target.value)}
+            />
+          </Field>
+        )}
+      </NodeDataField>
 
-      {vectorDb === 'pgvector' && (
-        <>
-          <NodeDataField<string> nodeId={nodeId} path={['pgvectorDbUrl']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.pgvectorDbUrl')}>
-                <input
-                  className="input font-mono text-[11px]"
-                  value={value ?? ''}
-                  onChange={(e) => set(e.target.value)}
-                  placeholder="postgresql://user:pass@host:5432/db"
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['pgvectorTableName']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.pgvectorTableName')}>
-                <input
-                  className="input"
-                  value={value ?? 'agno_kb'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['pgvectorSchema']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.pgvectorSchema')}>
-                <input
-                  className="input"
-                  value={value ?? 'ai'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-        </>
-      )}
+      {/* ── Embedder — v1 ships OpenAI only ─────────────────────────── */}
+      {/* Same forward-compat pattern: `embedder` discriminator field
+          stays in the schema (Literal["openai"]) but the UI never
+          asks — OpenAI is the only supported embedder. */}
+      <div className="rounded border border-teal-200/60 px-2 py-1 text-[11px] dark:border-teal-900">
+        <span className="font-semibold">openai</span>
+        <span className="opacity-60"> · {t('panel.knowledge.openaiBackendHint')}</span>
+      </div>
 
-      {vectorDb === 'chroma' && (
-        <>
-          <NodeDataField<string> nodeId={nodeId} path={['chromaPath']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.chromaPath')}>
-                <input
-                  className="input font-mono text-[11px]"
-                  value={value ?? './chroma_db'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['chromaCollectionName']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.chromaCollectionName')}>
-                <input
-                  className="input"
-                  value={value ?? 'agno_kb'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<boolean> nodeId={nodeId} path={['chromaPersistentClient']}>
-            {(value, set) => (
-              <label className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={value !== false}
-                  onChange={(e) => set(e.target.checked)}
-                />
-                {t('panel.knowledge.chromaPersistentClient')}
-              </label>
-            )}
-          </NodeDataField>
-        </>
-      )}
-
-      {/* ── Embedder ──────────────────────────────────────────────── */}
-      <Field label={t('panel.knowledge.embedder')}>
-        <select
-          className="input"
-          value={embedder}
-          onChange={(e) => {
-            const v = e.target.value as Embedder
-            setEmbedder(v)
-            const cfg = ((useWorkflowStore.getState().nodes.find((n) => n.id === nodeId)?.data?.config ?? {}) as Record<string, unknown>)
-            const merged = structuredClone(cfg)
-            merged.embedder = v
-            update(nodeId, { config: merged })
-          }}
-        >
-          <option value="openai">openai (default)</option>
-          <option value="sentence_transformers">sentence_transformers</option>
-          <option value="cohere">cohere</option>
-        </select>
-      </Field>
-
-      {embedder === 'openai' && (
-        <>
-          <NodeDataField<string> nodeId={nodeId} path={['openaiModel']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.openaiModel')}>
-                <input
-                  className="input"
-                  value={value ?? 'text-embedding-3-small'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['openaiApiKey']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.openaiApiKey')}>
-                <input
-                  className="input font-mono text-[11px]"
-                  type="password"
-                  value={value ?? ''}
-                  onChange={(e) => set(e.target.value)}
-                  placeholder={t('panel.knowledge.apiKeyEnvFallback')}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['openaiBaseUrl']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.openaiBaseUrl')}>
-                <input
-                  className="input font-mono text-[11px]"
-                  value={value ?? ''}
-                  onChange={(e) => set(e.target.value)}
-                  placeholder="https://api.openai.com/v1"
-                />
-              </Field>
-            )}
-          </NodeDataField>
-        </>
-      )}
-
-      {embedder === 'sentence_transformers' && (
-        <>
-          <NodeDataField<string> nodeId={nodeId} path={['sentenceTransformersModel']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.sentenceTransformersModel')}>
-                <input
-                  className="input font-mono text-[11px]"
-                  value={value ?? 'sentence-transformers/all-MiniLM-L6-v2'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<number> nodeId={nodeId} path={['sentenceTransformersDimensions']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.sentenceTransformersDimensions')}>
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  max={4096}
-                  value={value ?? 384}
-                  onChange={(e) => set(parseInt(e.target.value || '384', 10))}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-        </>
-      )}
-
-      {embedder === 'cohere' && (
-        <>
-          <NodeDataField<string> nodeId={nodeId} path={['cohereModel']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.cohereModel')}>
-                <input
-                  className="input"
-                  value={value ?? 'embed-english-v3.0'}
-                  onChange={(e) => set(e.target.value)}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['cohereApiKey']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.cohereApiKey')}>
-                <input
-                  className="input font-mono text-[11px]"
-                  type="password"
-                  value={value ?? ''}
-                  onChange={(e) => set(e.target.value)}
-                  placeholder={t('panel.knowledge.apiKeyEnvFallback')}
-                />
-              </Field>
-            )}
-          </NodeDataField>
-          <NodeDataField<string> nodeId={nodeId} path={['cohereInputType']}>
-            {(value, set) => (
-              <Field label={t('panel.knowledge.cohereInputType')}>
-                <select
-                  className="input"
-                  value={value ?? 'search_query'}
-                  onChange={(e) => set(e.target.value)}
-                >
-                  <option value="search_query">search_query</option>
-                  <option value="search_document">search_document</option>
-                </select>
-              </Field>
-            )}
-          </NodeDataField>
-        </>
-      )}
+      <NodeDataField<string> nodeId={nodeId} path={['openaiModel']}>
+        {(value, set) => (
+          <Field label={t('panel.knowledge.openaiModel')}>
+            <input
+              className="input"
+              value={value ?? 'text-embedding-3-small'}
+              onChange={(e) => set(e.target.value)}
+            />
+          </Field>
+        )}
+      </NodeDataField>
+      <NodeDataField<string> nodeId={nodeId} path={['openaiApiKey']}>
+        {(value, set) => (
+          <Field label={t('panel.knowledge.openaiApiKey')}>
+            <input
+              className="input font-mono text-[11px]"
+              type="password"
+              value={value ?? ''}
+              onChange={(e) => set(e.target.value)}
+              placeholder={t('panel.knowledge.apiKeyEnvFallback')}
+            />
+          </Field>
+        )}
+      </NodeDataField>
+      <NodeDataField<string> nodeId={nodeId} path={['openaiBaseUrl']}>
+        {(value, set) => (
+          <Field label={t('panel.knowledge.openaiBaseUrl')}>
+            <input
+              className="input font-mono text-[11px]"
+              value={value ?? ''}
+              onChange={(e) => set(e.target.value)}
+              placeholder="https://api.openai.com/v1"
+            />
+          </Field>
+        )}
+      </NodeDataField>
 
       {/* ── Sources ───────────────────────────────────────────────── */}
       <div>

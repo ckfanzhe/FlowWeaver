@@ -18,14 +18,14 @@ dependencies = [
     # (the docker-compose path). Local dev still uses SQLite.
     "psycopg[binary]>=3.1",
     # `pgvector` is the Python binding for Postgres' vector type.
-    # Required by `agno.vectordb.pgvector.PgVector` when a knowledge
-    # node selects `vectorDb='pgvector'`. The extension itself runs
-    # inside the Postgres container (`pgvector/pgvector:pg16` image,
-    # see `docker-compose.yml`); this package is the SQLAlchemy
-    # type adapter that lets Python emit / read `vector(...)`
-    # columns. Optional — only loaded when a user picks pgvector in
-    # the knowledge form (others fall back to lancedb / chroma
-    # which have their own Python deps).
+    # Required by `agno.vectordb.pgvector.PgVector` — v1's only
+    # knowledge-node vector DB backend (the docker-compose stack
+    # shares Postgres + pgvector across the platform's relational
+    # data and RAG KBs, locked 2026-08-25). The extension itself
+    # runs inside the Postgres container (`pgvector/pgvector:pg16`
+    # image, see `docker-compose.yml`); this package is the
+    # SQLAlchemy type adapter that lets Python emit / read
+    # `vector(...)` columns.
     "pgvector>=0.3",
     "python-multipart>=0.0.32",
     "sqlalchemy>=2.0.52",

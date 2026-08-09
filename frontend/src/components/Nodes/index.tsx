@@ -335,39 +335,31 @@ export function ToolNode({ id, data, selected }: NodeProps) {
 //
 // The body renders three summary badges so the user can tell at a
 // glance what's configured:
-//   1. Vector DB kind + table name (e.g. "lancedb · agno_kb")
+//   1. Vector DB kind + table name (e.g. "pgvector · agno_kb")
 //   2. Embedder kind + model id (e.g. "openai · text-embedding-3-small")
 //   3. Source count badge (e.g. "3 source(s)" — paths / URLs / text)
 // `addKnowledgeToContext` is surfaced as a small "→ auto-inject" hint
 // when true, so the user knows the agent will see retrieved chunks
 // without explicitly calling search_knowledge.
+//
+// v1 ships a single hard-coded stack (locked 2026-08-25): `pgvector`
+// + OpenAI embedder. The `vectorDb` / `embedder` discriminators still
+// come from the store (forward-compat) but the body reads the pgvector
+// + openai fields directly — no per-backend dispatch table.
 // ─────────────────────────────────────────────────────────────────
 export function KnowledgeNode({ id, data, selected }: NodeProps) {
   const bag = data as unknown as DataBag
   const cfg = getConfig<KnowledgeNodeConfig>(bag)
-  const vectorDb = cfg.vectorDb ?? 'lancedb'
+  const vectorDb = cfg.vectorDb ?? 'pgvector'
   const embedder = cfg.embedder ?? 'openai'
   const sources = cfg.sources ?? []
-  // Surface the table name depending on the chosen backend so the
-  // user can spot which table/file is being used without opening
-  // the property panel.
-  const tableLabel = (() => {
-    if (vectorDb === 'lancedb') return cfg.lancedbTableName || 'agno_kb'
-    if (vectorDb === 'pgvector') return cfg.pgvectorTableName || 'agno_kb'
-    if (vectorDb === 'chroma') return cfg.chromaCollectionName || 'agno_kb'
-    return ''
-  })()
+  // Surface the table name so the user can spot which table is being
+  // used without opening the property panel. v1 only ever renders the
+  // pgvector branch.
+  const tableLabel = cfg.pgvectorTableName || 'agno_kb'
   // Same for embedder model id — pick the field that matches the
   // chosen embedder so the user sees what they configured.
-  const embedderLabel = (() => {
-    if (embedder === 'openai') return cfg.openaiModel || 'text-embedding-3-small'
-    if (embedder === 'sentence_transformers')
-      return (cfg.sentenceTransformersModel || 'sentence-transformers/all-MiniLM-L6-v2')
-        .split('/')
-        .pop()
-    if (embedder === 'cohere') return cfg.cohereModel || 'embed-english-v3.0'
-    return ''
-  })()
+  const embedderLabel = cfg.openaiModel || 'text-embedding-3-small'
   return (
     <BaseNode type="knowledge" label={bag?.label} selected={useIsSelected(id, selected)} nodeId={id} hasInput={false}>
       <div className="font-mono text-[10px] leading-relaxed">

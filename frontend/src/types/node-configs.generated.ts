@@ -144,25 +144,15 @@ export interface KnowledgeNodeConfig {
   description: string;
   maxResults: number;
   addKnowledgeToContext: boolean;
-  vectorDb: 'lancedb' | 'pgvector' | 'chroma';
-  lancedbUri: string;
-  lancedbTableName: string;
+  vectorDb: 'pgvector';
   pgvectorDbUrl: string;
   pgvectorTableName: string;
   pgvectorSchema: string;
-  chromaPath: string;
-  chromaCollectionName: string;
-  chromaPersistentClient: boolean;
-  embedder: 'openai' | 'sentence_transformers' | 'cohere';
+  embedder: 'openai';
   openaiModel: string;
   openaiApiKey?: string | null;
   openaiBaseUrl?: string | null;
   openaiDimensions?: number | null;
-  sentenceTransformersModel: string;
-  sentenceTransformersDimensions: number;
-  cohereModel: string;
-  cohereApiKey?: string | null;
-  cohereInputType: string;
   sources: KnowledgeSource[];
 }
 

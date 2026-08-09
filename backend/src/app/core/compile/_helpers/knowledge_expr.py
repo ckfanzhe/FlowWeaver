@@ -6,9 +6,9 @@ ends up at module scope in the exported `.py` so agents can reference
 `kb_<ref>` directly.
 
 Construction order (matches `KnowledgeStrategy.build`):
-  1. embedder = `<EmbedderClass>(...)`  — emits inline constructor.
-  2. vector_db = `<VectorDbClass>(embedder=embedder, ...)` — embedder
-     is constructed in line so we get a single readable block.
+  1. embedder = `OpenAIEmbedder(...)`  — emits inline constructor.
+  2. vector_db = `PgVector(embedder=embedder, ...)` — embedder is
+     constructed in line so we get a single readable block.
   3. knowledge = `Knowledge(vector_db=vector_db, name=..., max_results=...)`.
 
 Returning everything as a single string means the compile pipeline
@@ -17,6 +17,12 @@ emits one block per `knowledge` node, in pass 0, before the agents.
 `knowledge_ref(nid)` returns the variable expression (`kb_<nid>`) that
 goes into `Agent(knowledge=...)` — same idiom as `tools_expr` returning
 `<nid>_mcp`.
+
+v1 ships a single backend stack (locked 2026-08-25): `PgVector` +
+`OpenAIEmbedder`. The dispatch helpers (`_embedder_expr`,
+`_vector_db_expr`) keep their `(class_name, kwargs_text)` return shape
+so adding a future second backend is a one-line `if kind == "..."`
+branch — the call sites (`knowledge_block`) are unchanged.
 """
 from __future__ import annotations
 
@@ -30,7 +36,7 @@ from .utils import q
 def _embedder_expr(cfg: dict) -> tuple[str, str]:
     """Return `(class_name, kwargs_text)` for the cfg's embedder.
 
-    `class_name` is e.g. `"OpenAIEmbedder"`. `kwargs_text` is the
+    `class_name` is `"OpenAIEmbedder"`. `kwargs_text` is the
     comma-joined kwargs body for the inline constructor — already
     indented to match the surrounding block (no surrounding parens).
 
@@ -50,25 +56,9 @@ def _embedder_expr(cfg: dict) -> tuple[str, str]:
             kwargs.append(f"dimensions={int(cfg['openaiDimensions'])}")
         return "OpenAIEmbedder", ", ".join(kwargs)
 
-    if kind == "sentence_transformers":
-        kwargs = [
-            f"model={q(cfg.get('sentenceTransformersModel') or 'sentence-transformers/all-MiniLM-L6-v2')}",
-            f"dimensions={int(cfg.get('sentenceTransformersDimensions') or 384)}",
-        ]
-        return "SentenceTransformerEmbedder", ", ".join(kwargs)
-
-    if kind == "cohere":
-        kwargs = [
-            f"model={q(cfg.get('cohereModel') or 'embed-english-v3.0')}",
-            f"input_type={q(cfg.get('cohereInputType') or 'search_query')}",
-        ]
-        if cfg.get("cohereApiKey"):
-            kwargs.append(f"api_key={q(cfg['cohereApiKey'])}")
-        return "CohereEmbedder", ", ".join(kwargs)
-
     raise ValueError(
         f"knowledge_expr: unknown embedder {kind!r} "
-        "(expected 'openai' | 'sentence_transformers' | 'cohere')"
+        "(v1 supports 'openai' only)"
     )
 
 
@@ -79,14 +69,7 @@ def _vector_db_expr(cfg: dict) -> tuple[str, str]:
     `knowledge_block` so the constructor body stays clean — here we
     only emit the backend-specific kwargs.
     """
-    kind = (cfg.get("vectorDb") or "lancedb").strip().lower()
-
-    if kind == "lancedb":
-        kwargs = [
-            f"uri={q(cfg.get('lancedbUri') or '/tmp/lancedb')}",
-            f"table_name={q(cfg.get('lancedbTableName') or 'agno_kb')}",
-        ]
-        return "LanceDb", ", ".join(kwargs)
+    kind = (cfg.get("vectorDb") or "pgvector").strip().lower()
 
     if kind == "pgvector":
         kwargs = [
@@ -96,17 +79,9 @@ def _vector_db_expr(cfg: dict) -> tuple[str, str]:
         ]
         return "PgVector", ", ".join(kwargs)
 
-    if kind == "chroma":
-        kwargs = [
-            f"path={q(cfg.get('chromaPath') or './chroma_db')}",
-            f"collection_name={q(cfg.get('chromaCollectionName') or 'agno_kb')}",
-            f"persistent_client={'True' if cfg.get('chromaPersistentClient', True) else 'False'}",
-        ]
-        return "ChromaDb", ", ".join(kwargs)
-
     raise ValueError(
         f"knowledge_expr: unknown vectorDb {kind!r} "
-        "(expected 'lancedb' | 'pgvector' | 'chroma')"
+        "(v1 supports 'pgvector' only)"
     )
 
 
@@ -121,9 +96,10 @@ def knowledge_block(nid: str, node: dict, ctx: Any) -> str:
         <nid>_embedder = OpenAIEmbedder(
             id="text-embedding-3-small",
         )
-        <nid>_vector_db = LanceDb(
-            uri="/tmp/lancedb",
+        <nid>_vector_db = PgVector(
+            db_url="...",
             table_name="agno_kb",
+            schema="ai",
             embedder=<nid>_embedder,
         )
         <nid>_kb = Knowledge(
@@ -138,8 +114,8 @@ def knowledge_block(nid: str, node: dict, ctx: Any) -> str:
     which emits raw function defs.
 
     `_normalize_cfg` runs through `KnowledgeNodeConfig.model_validate`
-    so default fields (vectorDb='lancedb', maxResults=10, …) are
-    filled in. Mirrors `strategies/tool._normalize_cfg`.
+    so default fields (vectorDb='pgvector', maxResults=10, …) are
+    filled in. Mirrors `strategies/knowledge._normalize_cfg`.
     """
     cfg = _normalize_cfg((node.get("data") or {}).get("config") or {})
 
@@ -204,36 +180,23 @@ def required_imports(nodes_by_id: dict[str, dict]) -> list[str]:
 
     Mirrors `imports.collect_imports` for tools — the pipeline reads
     this and prepends the lines at the top of the exported `.py`.
-    """
-    kinds: set[str] = set()
-    embedder_kinds: set[str] = set()
-    for node in nodes_by_id.values():
-        if node.get("type") != "knowledge":
-            continue
-        cfg = (node.get("data") or {}).get("config") or {}
-        kinds.add((cfg.get("vectorDb") or "lancedb").strip().lower())
-        embedder_kinds.add((cfg.get("embedder") or "openai").strip().lower())
 
-    if not kinds and not embedder_kinds:
+    v1 ships a fixed stack — `Knowledge` + `PgVector` + `OpenAIEmbedder` —
+    so this is always the same 3-line block (when any knowledge node
+    exists). Kept as a function for forward-compat (a future second
+    backend widens this back into a discriminator dispatch).
+    """
+    has_knowledge = any(
+        node.get("type") == "knowledge" for node in nodes_by_id.values()
+    )
+    if not has_knowledge:
         return []
 
-    out: list[str] = ["from agno.knowledge.knowledge import Knowledge"]
-    if "lancedb" in kinds:
-        out.append("from agno.vectordb.lancedb import LanceDb")
-    if "pgvector" in kinds:
-        out.append("from agno.vectordb.pgvector import PgVector")
-    if "chroma" in kinds:
-        out.append("from agno.vectordb.chroma import ChromaDb")
-    if "openai" in embedder_kinds:
-        out.append("from agno.knowledge.embedder.openai import OpenAIEmbedder")
-    if "sentence_transformers" in embedder_kinds:
-        out.append(
-            "from agno.knowledge.embedder.sentence_transformer "
-            "import SentenceTransformerEmbedder"
-        )
-    if "cohere" in embedder_kinds:
-        out.append("from agno.knowledge.embedder.cohere import CohereEmbedder")
-    return out
+    return [
+        "from agno.knowledge.knowledge import Knowledge",
+        "from agno.vectordb.pgvector import PgVector",
+        "from agno.knowledge.embedder.openai import OpenAIEmbedder",
+    ]
 
 
 # ─────────────────────────────────────────────────────────────────

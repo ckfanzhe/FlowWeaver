@@ -46,8 +46,18 @@ FROM node:22.23.2-slim AS runtime
 WORKDIR /app
 
 # Same lockfile → same node_modules tree at runtime.
+#
+# Note: we deliberately install the FULL dependency set (no `--omit-dev`)
+# because `vite preview` is shipped as a devDependency in `package.json`
+# (matches the standard Vite scaffold). Using `--omit=dev` here would
+# strip the `vite` CLI from `node_modules/.bin/`, and `CMD ["npx", ...]`
+# would then fetch `vite` on the fly (a fresh `vite@8.x` per container
+# start — noisy warning, slow cold start, non-deterministic). The few
+# extra MB of devDeps are the simpler trade than pinning + reinstalling
+# vite explicitly. Switch to an nginx-based static stage when the image
+# size starts to matter.
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 # Static bundle + node_modules (vite CLI lives in node_modules/.bin/).
 COPY --from=build /app/dist ./dist

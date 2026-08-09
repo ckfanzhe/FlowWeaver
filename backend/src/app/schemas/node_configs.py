@@ -1107,26 +1107,26 @@ class AskConfig(BaseModel):
 
 class KnowledgeNodeConfig(BaseModel):
     """A `knowledge` node's editable fields — mirrors
-    `agno.knowledge.Knowledge(vector_db=<VectorDb>, max_results=N)`
+    `agno.knowledge.Knowledge(vector_db=PgVector(...), max_results=N)`
     directly.
 
-    The two top-level discriminators pick the concrete vector DB /
-    embedder constructor at runtime:
+    v1 ships a single backend stack (decided 2026-08-25 with the
+    docker-compose cutover):
 
-      - `vectorDb` → one of `'lancedb'` (default, file-based, zero-
-        external-deps), `'pgvector'` (self-hosted Postgres + pgvector),
-        `'chroma'` (self-hosted Chroma). The matching per-backend
-        fields (e.g. `lancedbUri`, `pgvectorDbUrl`) are read only when
-        that backend is selected; other backends' fields are silently
-        ignored (matches the F7 ToolNodeConfig flat-discriminator
-        pattern at line 292).
-      - `embedder` → one of `'openai'` (default), `'sentence_transformers'`
-        (offline, no API key, downloads model on first use), `'cohere'`.
+      - `vectorDb` → `'pgvector'` only. Shares the platform Postgres
+        (`pgvector/pgvector:pg16` in `docker-compose.yml`) so every
+        user's KB lives in the same database, with proper multi-user
+        / LAN semantics. The matching `pgvector_*` fields below are
+        the only knobs (DB URL / table name / schema).
+      - `embedder` → `'openai'` only. Compatible with OpenAI / Azure /
+        any OpenAI-compatible endpoint (vLLM, LocalAI, …). The
+        matching `openai_*` fields below are the only knobs
+        (model id / API key / base URL / dimensions).
 
-    Optional deps are NOT installed by default — the runtime emits
-    a clear `pip install <dep>` error if the user picked a backend /
-    embedder whose package is missing. The lean default install is
-    preserved.
+    The `vector_db` + `embedder` discriminators stay in the schema as
+    `Literal["pgvector"]` / `Literal["openai"]` so the field path is
+    stable for forward-compat — adding a new backend later means
+    widening the Literal, not restructuring the config tree.
 
     `sources[]` records what the user wants indexed. The export emits
     only the `Knowledge(...)` constructor; users call
@@ -1177,44 +1177,29 @@ class KnowledgeNodeConfig(BaseModel):
     )
 
     # ── vector DB discriminator ─────────────────────────────────
-    vector_db: Literal["lancedb", "pgvector", "chroma"] = Field(
-        default="lancedb",
+    # v1 ships pgvector only — sharing the docker-compose Postgres
+    # (`pgvector/pgvector:pg16`) so KBs are multi-user / LAN-native.
+    vector_db: Literal["pgvector"] = Field(
+        default="pgvector",
         alias="vectorDb",
         description=(
-            "Vector DB backend. `'lancedb'` (default, file-based at "
-            "`lancedbUri`, no external service), `'pgvector'` (Postgres + "
-            "pgvector extension, requires `pgvectorDbUrl`), `'chroma'` "
-            "(self-hosted Chroma, persistent at `chromaPath`). Optional "
-            "deps — the runtime surfaces a `pip install <dep>` error if "
-            "the chosen backend's package is missing."
+            "Vector DB backend. v1 ships `'pgvector'` only — shares the "
+            "platform Postgres (`pgvector/pgvector:pg16` in "
+            "`docker-compose.yml`). Required: `pgvectorDbUrl` must point "
+            "at a Postgres with the `vector` extension loaded."
         ),
     )
-    # ── lancedb-only (effective when vectorDb='lancedb') ──────
-    lancedb_uri: str = Field(
-        default="/tmp/lancedb",
-        alias="lancedbUri",
-        description=(
-            "LanceDb directory path (file-based). Maps to "
-            "`LanceDb(uri=...)`. Default `/tmp/lancedb`."
-        ),
-    )
-    lancedb_table_name: str = Field(
-        default="agno_kb",
-        alias="lancedbTableName",
-        description=(
-            "LanceDb table name. Maps to `LanceDb(table_name=...)`. "
-            "Default `agno_kb`."
-        ),
-    )
-    # ── pgvector-only (effective when vectorDb='pgvector') ─────
+    # ── pgvector-only ──────────────────────────────────────────
     pgvector_db_url: str = Field(
-        default="",
+        default="postgresql+psycopg://agnobuilder:agnobuilder@localhost:5432/agnobuilder",
         alias="pgvectorDbUrl",
         description=(
-            "Postgres connection URL (e.g. "
-            "`postgresql://user:pass@host:5432/db`). Maps to "
-            "`PgVector(db_url=...)`. Empty + vectorDb='pgvector' raises "
-            "at compile time."
+            "Postgres connection URL for the pgvector-backed Knowledge "
+            "store (e.g. `postgresql://user:pass@host:5432/db`). Maps to "
+            "`PgVector(db_url=...)`. The docker-compose default points "
+            "at the bundled `postgres` service; the schema default "
+            "points at `localhost` for local-dev. The runtime "
+            "`_build_vector_db` raises if this is empty at compile time."
         ),
     )
     pgvector_table_name: str = Field(
@@ -1233,42 +1218,19 @@ class KnowledgeNodeConfig(BaseModel):
             "Default `ai`."
         ),
     )
-    # ── chroma-only (effective when vectorDb='chroma') ─────────
-    chroma_path: str = Field(
-        default="./chroma_db",
-        alias="chromaPath",
-        description=(
-            "Chroma persistent directory path. Maps to "
-            "`ChromaDb(path=...)`. Default `./chroma_db`."
-        ),
-    )
-    chroma_collection_name: str = Field(
-        default="agno_kb",
-        alias="chromaCollectionName",
-        description=(
-            "Chroma collection name. Maps to "
-            "`ChromaDb(collection_name=...)`. Default `agno_kb`."
-        ),
-    )
-    chroma_persistent_client: bool = Field(
-        default=True,
-        alias="chromaPersistentClient",
-        description=(
-            "Use Chroma's persistent client (data survives process exit). "
-            "Maps to `ChromaDb(persistent_client=...)`. Default true."
-        ),
-    )
 
     # ── embedder discriminator ──────────────────────────────────
-    embedder: Literal["openai", "sentence_transformers", "cohere"] = Field(
+    # v1 ships openai only — works with OpenAI / Azure / any OpenAI-
+    # compatible endpoint (vLLM, LocalAI, …).
+    embedder: Literal["openai"] = Field(
         default="openai",
         description=(
-            "Embedder backend. `'openai'` (default, OpenAI / Azure-"
-            "compatible endpoint), `'sentence_transformers'` (offline, no "
-            "API key, downloads model on first use), `'cohere'`."
+            "Embedder backend. v1 ships `'openai'` only — OpenAI / "
+            "Azure / self-hosted OpenAI-compatible endpoints (vLLM, "
+            "LocalAI, etc.) via `openaiBaseUrl`."
         ),
     )
-    # ── openai-only (effective when embedder='openai') ─────────
+    # ── openai-only ────────────────────────────────────────────
     openai_model: str = Field(
         default="text-embedding-3-small",
         alias="openaiModel",
@@ -1291,7 +1253,7 @@ class KnowledgeNodeConfig(BaseModel):
         alias="openaiBaseUrl",
         description=(
             "Custom OpenAI-compatible base URL (Azure / self-hosted / "
-            "proxy). Empty = provider default. Maps to "
+            "vLLM proxy). Empty = provider default. Maps to "
             "`OpenAIEmbedder(base_url=...)`."
         ),
     )
@@ -1302,54 +1264,6 @@ class KnowledgeNodeConfig(BaseModel):
             "Override embedding dimensions. None = let `OpenAIEmbedder` "
             "default (3072 for `text-embedding-3-large`, 1536 otherwise). "
             "Maps to `OpenAIEmbedder(dimensions=...)`."
-        ),
-    )
-    # ── sentence_transformers-only ─────────────────────────────
-    sentence_transformers_model: str = Field(
-        default="sentence-transformers/all-MiniLM-L6-v2",
-        alias="sentenceTransformersModel",
-        description=(
-            "HuggingFace model id. Maps to "
-            "`SentenceTransformerEmbedder(model=...)`. Default "
-            "`sentence-transformers/all-MiniLM-L6-v2` (384-dim, ~80MB "
-            "download on first use)."
-        ),
-    )
-    sentence_transformers_dimensions: int = Field(
-        default=384,
-        alias="sentenceTransformersDimensions",
-        description=(
-            "Vector dimensions produced by the chosen model. Must match "
-            "the model's native dim (e.g. 384 for all-MiniLM-L6-v2, "
-            "768 for all-mpnet-base-v2). Maps to "
-            "`SentenceTransformerEmbedder(dimensions=...)`."
-        ),
-    )
-    # ── cohere-only ────────────────────────────────────────────
-    cohere_model: str = Field(
-        default="embed-english-v3.0",
-        alias="cohereModel",
-        description=(
-            "Cohere embedding model id. Maps to "
-            "`CohereEmbedder(model=...)`. Default `embed-english-v3.0`."
-        ),
-    )
-    cohere_api_key: Optional[str] = Field(
-        default=None,
-        alias="cohereApiKey",
-        description=(
-            "Cohere API key. Inline value wins over `COHERE_API_KEY` env "
-            "var. None / empty = fall through to env. Maps to "
-            "`CohereEmbedder(api_key=...)`."
-        ),
-    )
-    cohere_input_type: str = Field(
-        default="search_query",
-        alias="cohereInputType",
-        description=(
-            "Cohere input type (`'search_query'` for queries, "
-            "`'search_document'` for indexed content). Maps to "
-            "`CohereEmbedder(input_type=...)`. Default `search_query`."
         ),
     )
 
