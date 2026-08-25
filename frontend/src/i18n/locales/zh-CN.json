@@ -363,6 +363,7 @@
     "buildPlaceholder": "描述工作流的修改……",
     "buildPlaceholderEmpty": "描述你想创建的工作流，例如：“一个能根据用户输入自动分类，并把紧急请求路由给专属 Agent 的客服工作流”。",
     "creatingWorkflow": "正在创建空白工作流……",
+    "waitingPlaceholder": "等待工作流完成……",
     "confirmPlaceholder": "输入你的回答（如果是确认题，输入 \"yes\"/\"no\"）……",
     "clear": "清空",
     "copyJson": "复制",
@@ -384,12 +385,35 @@
     "modelLabel": "模型",
     "yes": "✓ 是",
     "no": "✗ 否",
+    "waiting": "等待中…",
+    "waitingOn": "等待 \"{label}\"…",
     "kind": {
       "asking": "正在询问你：",
       "confirm": "请确认：",
       "completed": "✓ 已完成"
     },
+    "showTrace": "执行轨迹",
+    "hideTrace": "隐藏轨迹",
     "resize": "调整大小"
+  },
+  "trace": {
+    "title": "执行轨迹",
+    "running": "运行中…",
+    "empty": "运行工作流后此处会显示每个节点的时序。",
+    "close": "关闭 ✕",
+    "clickToSelect": "点击在画布上选中",
+    "start": "开始",
+    "pending": "…",
+    "duration": "{ms}ms",
+    "noTokens": "—",
+    "tokenCount": "{count} tok",
+    "totalNodes": "{count} 个节点",
+    "tokens": "tok {input}↓ {output}↑ ({total})",
+    "status": {
+      "running": "运行中",
+      "ok": "成功",
+      "error": "错误"
+    }
   },
   "node": {
     "status": {
