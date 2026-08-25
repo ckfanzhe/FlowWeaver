@@ -81,9 +81,16 @@ interface IdentityActions {
 
 const STORAGE_KEY = 'agnobuilder.userId'
 
+// Identity is per-TAB (sessionStorage), not per-BROWSER (localStorage).
+// Previously the two tabs of one browser shared a single identity and
+// could clobber each other's `lastWorkflowId` mid-edit. Using
+// sessionStorage gives each tab its own copy; the user re-enters the
+// email on the second tab if they want a different identity. Switching
+// to localStorage again was a deliberate choice — multi-tab edit
+// conflicts are worse than re-entering an email once.
 function readStoredUserId(): string | null {
   try {
-    const v = localStorage.getItem(STORAGE_KEY)
+    const v = sessionStorage.getItem(STORAGE_KEY)
     return v && v.trim() ? v.trim() : null
   } catch {
     return null
@@ -92,12 +99,41 @@ function readStoredUserId(): string | null {
 
 function writeStoredUserId(userId: string | null): void {
   try {
-    if (userId) localStorage.setItem(STORAGE_KEY, userId)
-    else localStorage.removeItem(STORAGE_KEY)
+    if (userId) sessionStorage.setItem(STORAGE_KEY, userId)
+    else sessionStorage.removeItem(STORAGE_KEY)
   } catch {
-    /* localStorage may be unavailable (private mode etc.) — non-fatal */
+    /* sessionStorage may be unavailable (private mode etc.) — non-fatal */
   }
 }
+
+// Cross-tab sign-out sync — when one tab signs out, every other tab
+// on the same origin should also clear its identity state. Broadcast
+// falls back to a no-op when the runtime doesn't expose it (Safari
+// <15.4, some embedded WebViews). The receiving side just calls the
+// same `signOut` action so the state machine stays in one place.
+const SIGN_OUT_CHANNEL = 'agnobuilder.identity.signout'
+type SignOutMsg = { type: 'signout' }
+const signOutBroadcast: BroadcastChannel | null =
+  typeof BroadcastChannel !== 'undefined'
+    ? new BroadcastChannel(SIGN_OUT_CHANNEL)
+    : null
+signOutBroadcast?.addEventListener('message', (ev) => {
+  const data = ev.data as SignOutMsg | undefined
+  if (data?.type === 'signout') {
+    // Pull signOut from the live store — avoids importing the action
+    // at module-init time (which would capture a stale closure).
+    const { signOut, userId: remoteUserId } = useIdentityStore.getState()
+    // Only clear if the broadcast applies to us. Without this check,
+    // a signOut broadcast from tab A would fire its own listener
+    // when tab B receives it, causing tab B to broadcast a second
+    // signout event. We do that filtering by only reacting to
+    // REMOTE userIds — i.e. when our local userId differs from the
+    // broadcast's. Since we don't carry the sender's userId in the
+    // payload, we rely on the heuristic that no local-state change
+    // is needed if we're already signed out.
+    if (remoteUserId) signOut()
+  }
+})
 
 export const useIdentityStore = create<IdentityState & IdentityActions>(
   (set, get) => ({
@@ -255,6 +291,11 @@ export const useIdentityStore = create<IdentityState & IdentityActions>(
       // user's `X-User-Id` will get 404 on that sid because the
       // runtime now scopes by user).
       useChatRunStore.getState().resetAll()
+      // Notify other tabs to sign out too — so opening the same
+      // platform in two tabs and signing out from one doesn't leave
+      // the other tab with a stale identity. The receiving listener
+      // ignores broadcasts when its own userId is already null.
+      signOutBroadcast?.postMessage({ type: 'signout' } satisfies SignOutMsg)
     },
 
     clearError: () => set({ error: null }),
