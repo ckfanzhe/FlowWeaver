@@ -343,7 +343,7 @@ def real_llm_preset(monkeypatch, db):
     """
     import uuid
 
-    from app.db.models import LlmPreset
+    from app.db.models import LlmPreset, User
 
     creds = _load_dotenv_llm()
     # Provider-agnostic (2026-08-14): the local vLLM config in
@@ -364,6 +364,11 @@ def real_llm_preset(monkeypatch, db):
         pytest.skip(".env.llm is missing — real_llm_preset needs an API key")
 
     pid = f"preset-real-{uuid.uuid4().hex[:8]}"
+    # `llm_presets.user_id` is FK to `users.id`. Insert the
+    # synthetic owner FIRST so the FK passes (mirrors the same
+    # pattern in `seeded_default_preset`).
+    db.merge(User(id="tests", email="tests@local"))
+    db.commit()
     db.add(LlmPreset(
         id=pid,
         name=f"Default {provider} (.env.llm)",
@@ -448,7 +453,38 @@ def _bind_session_store_engine(engine, monkeypatch):
     `session_store()` invocation inside the test uses the test
     engine. Restoration on teardown returns the class attribute
     to its previous value (None in fresh processes).
+
+    Also rewires `app.db.session.engine` and `app.db.session.SessionLocal`
+    to the per-test engine. Without this, `TestClient(app)` triggers
+    the FastAPI lifespan which calls `init_db()` on the production
+    engine — that engine points at `settings.database_url` which
+    defaults to the compose-network hostname `postgres:5432` (NOT
+    `127.0.0.1:5432`). On a developer laptop with docker-compose
+    running, `postgres` doesn't resolve from the host process; the
+    lifespan raises `failed to resolve host 'postgres'` and every
+    subsequent test that touches the FastAPI app errors out with
+    `sqlalchemy.exc.OperationalError`.
+
+    Pinned so a future "let's also patch <X>" addition doesn't
+    regress this — the test isolation contract is: every DB
+    operation in a test MUST go through the per-test engine, no
+    exceptions.
     """
     from app.runtime.session import SessionStore
 
+    import app.db.session as _db_session
+
     monkeypatch.setattr(SessionStore, "_engine", engine)
+    # Re-bind the module-level singletons so `app.db.session.engine`,
+    # `app.db.session.SessionLocal`, and any code path that reads
+    # `app.db.session.engine` (e.g. `init_db()` called from the
+    # FastAPI lifespan) all use the per-test engine.
+    monkeypatch.setattr(_db_session, "engine", engine)
+    # `SessionLocal` is a sessionmaker bound to the original engine
+    # — we need a fresh sessionmaker pointed at the test engine so
+    # the FastAPI `get_db` dependency returns sessions that talk to
+    # the right schema.
+    from sqlalchemy.orm import sessionmaker
+
+    _test_session_local = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    monkeypatch.setattr(_db_session, "SessionLocal", _test_session_local)

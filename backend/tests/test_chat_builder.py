@@ -1396,7 +1396,13 @@ def test_build_llm_model_rejects_preset_owned_by_another_user(
     leak model credentials across users. Falls back to the
     caller's default."""
     import uuid
-    from app.db.models import LlmPreset
+    from app.db.models import LlmPreset, User
+
+    # `llm_presets.user_id` is FK to `users.id`. Seed the other-user
+    # so the subsequent INSERT doesn't violate the constraint
+    # (test predates the FK, would silently pass on SQLite).
+    db.merge(User(id="mallory@example.com", email="mallory@example.com"))
+    db.commit()
 
     other_user_preset = f"preset-other-{uuid.uuid4().hex[:8]}"
     db.add(LlmPreset(

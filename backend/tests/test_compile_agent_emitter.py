@@ -57,7 +57,7 @@ import pytest
 
 from app.core.compile import build_workflow
 from app.core.compile.errors import CompileError
-from app.db.models import LlmPreset
+from app.db.models import LlmPreset, User
 
 pytestmark = pytest.mark.usefixtures("seeded_default_preset")
 
@@ -292,6 +292,10 @@ def test_user_specific_default_preset_wins_over_seed(
     _user_scoped_llm_runner(monkeypatch, db)
 
     # Stamp a separate default preset owned by "alice@example.com".
+    # `llm_presets.user_id` is FK to `users.id` — seed alice first.
+    db.merge(User(id="alice@example.com", email="alice@example.com"))
+    db.commit()
+
     alice_pid = f"preset-{uuid.uuid4().hex[:8]}"
     db.add(LlmPreset(
         id=alice_pid,

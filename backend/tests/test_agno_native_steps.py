@@ -54,6 +54,54 @@ from app.core.events import (
 # 1. Happy path — single agent runs via Step(agent=Agent(...))
 # ─────────────────────────────────────────────────────────────────
 class TestAgentNativeRun:
+    @pytest.fixture(autouse=True)
+    def _require_llm_endpoint(self):
+        """Integration tests need a real LLM endpoint reachable at
+        the URL configured in `.env.llm` (`OPENAI_BASE_URL` /
+        `ANTHROPIC_BASE_URL`). Skip the whole class when the
+        endpoint isn't listening — these are integration tests, not
+        unit tests, and should not block CI / local-runs-without-LLM.
+
+        The check is intentionally cheap (TCP connect with a 1s
+        timeout) so it doesn't slow down the rest of the suite.
+        """
+        import socket
+
+        from pathlib import Path
+
+        env_path = Path(__file__).resolve().parents[2] / ".env.llm"
+        if not env_path.exists():
+            pytest.skip("agno native steps: .env.llm missing")
+        creds: dict[str, str] = {}
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            creds[k.strip()] = v.strip()
+        url = (
+            creds.get("OPENAI_BASE_URL")
+            or creds.get("ANTHROPIC_BASE_URL")
+            or ""
+        )
+        # Strip the path part — we only want host:port for the
+        # TCP probe.
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 443
+        sock = socket.socket()
+        sock.settimeout(1.0)
+        try:
+            sock.connect((host, port))
+        except (OSError, socket.timeout):
+            pytest.skip(
+                f"agno native steps: LLM endpoint {host}:{port} not reachable"
+            )
+        finally:
+            sock.close()
+
     def test_linear_echo_emits_text_then_completed(self, real_llm_preset):
         """The canonical happy path. After the agent-strategy fold, agent nodes
         run through `Step(agent=Agent(...))` and `real_llm_preset`

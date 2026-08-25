@@ -286,8 +286,20 @@ def test_mcp_default_user_sees_nothing(client):
 def test_resolve_default_preset_id_user_scope(db):
     """`_resolve_default_preset_id(user_id=X)` returns X's default
     strictly; users without a default get None (no system fallback)."""
-    from app.db.models import LlmPreset
+    from app.db.models import LlmPreset, User
     from app.core.llm_runner import _resolve_default_preset_id
+
+    # `llm_presets.user_id` is FK to `users.id`. Pre-existing tests
+    # predate the constraint and would silently pass against SQLite
+    # without it; the Postgres-only migration (v1.5) made the FK
+    # enforced. Seed the 3 users the test references so the
+    # subsequent INSERTs don't violate the constraint.
+    for uid, email in (
+        ("alice@example.com", "alice@example.com"),
+        ("bob@example.com", "bob@example.com"),
+    ):
+        db.merge(User(id=uid, email=email))
+    db.commit()
 
     alice_default = f"preset-{uuid.uuid4().hex[:8]}"
     bob_default = f"preset-{uuid.uuid4().hex[:8]}"
@@ -315,8 +327,17 @@ def test_resolve_default_preset_id_user_scope(db):
 def test_resolve_preset_user_scope(db):
     """`_resolve_preset(id, user_id=X)` only returns X's rows. Looking
     up another user's preset id returns None."""
-    from app.db.models import LlmPreset
+    from app.db.models import LlmPreset, User
     from app.core.llm_runner import _resolve_preset
+
+    # Seed the 2 referenced users (see FK note in
+    # `test_resolve_default_preset_id_user_scope`).
+    for uid, email in (
+        ("alice@example.com", "alice@example.com"),
+        ("bob@example.com", "bob@example.com"),
+    ):
+        db.merge(User(id=uid, email=email))
+    db.commit()
 
     alice_pid = f"preset-{uuid.uuid4().hex[:8]}"
     bob_pid = f"preset-{uuid.uuid4().hex[:8]}"
@@ -348,8 +369,17 @@ def test_resolve_preset_user_scope(db):
 def test_ensure_single_default_scoped_per_user(db):
     """`is_default=true` flips every OTHER row owned by the same
     user off, leaving other users' defaults untouched."""
-    from app.db.models import LlmPreset
+    from app.db.models import LlmPreset, User
     from app.services import llm_preset_service
+
+    # Seed the 2 referenced users (see FK note in
+    # `test_resolve_default_preset_id_user_scope`).
+    for uid, email in (
+        ("alice@example.com", "alice@example.com"),
+        ("bob@example.com", "bob@example.com"),
+    ):
+        db.merge(User(id=uid, email=email))
+    db.commit()
 
     a1 = f"preset-{uuid.uuid4().hex[:8]}"
     a2 = f"preset-{uuid.uuid4().hex[:8]}"
