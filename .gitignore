@@ -6,8 +6,11 @@ start.sh
 dist
 __pycache__
 .env*
+!.env.example
 *.jinja
 examples
+# Local-only architecture audit (committed once at audit time; updates are personal reference, not version-controlled)
+docs/ARCHITECTURE_AUDIT.md
 .claude
 CLAUDE.md
 llmtest.sh
