@@ -37,6 +37,8 @@
       "importJson": "从 JSON 导入…",
       "importJsonHint": "从 .json 文件导入工作流",
       "noWorkflows": "暂无已保存的工作流",
+      "searchPlaceholder": "按名称或 id 筛选…",
+      "noMatches": "没有匹配的工作流",
       "switchUser": "切换用户",
       "switchUserHint": "退出当前用户并选择其他邮箱（清除本浏览器中的身份）"
     },

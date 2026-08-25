@@ -179,7 +179,17 @@ export function WorkflowToolbar() {
   ]
 
   // Inline list of saved workflows, shown under the menu items.
-  const recent = items.slice(0, 8)
+  // Filter by name / id before slicing — the search input is
+  // local state so the dropdown stays responsive while typing.
+  const [search, setSearch] = useState('')
+  const filtered = search.trim()
+    ? items.filter(
+        (w) =>
+          w.name.toLowerCase().includes(search.toLowerCase()) ||
+          w.id.toLowerCase().includes(search.toLowerCase()),
+      )
+    : items
+  const recent = filtered.slice(0, 8)
 
   const footer = (
     <div className="px-1">
@@ -187,53 +197,74 @@ export function WorkflowToolbar() {
         <span className="text-[10px] uppercase tracking-wider text-ink-faint">
           {t('toolbar.menu.load')}
         </span>
-        <span className="text-[10px] text-ink-faint">{items.length}</span>
+        <span className="text-[10px] text-ink-faint">{filtered.length}</span>
       </div>
       {items.length === 0 ? (
         <p className="px-2 py-1 text-xs text-ink-muted">{t('toolbar.menu.noWorkflows')}</p>
       ) : (
-        <ul className="max-h-64 overflow-y-auto">
-          {recent.map((w) => {
-            const isCurrent = w.id === workflowId
-            return (
-              <li
-                key={w.id}
-                className={[
-                  'group flex items-center gap-1 rounded px-2 py-1 hover:bg-surface-2',
-                  isCurrent ? 'bg-accent-soft' : '',
-                ].join(' ')}
-              >
-                <button
-                  className="flex-1 min-w-0 text-left"
-                  onClick={async () => {
-                    await loadFromBackend(w.id)
-                  }}
-                >
-                  <div className="truncate text-sm text-ink">{w.name}</div>
-                  <div className="truncate text-[10px] text-ink-faint font-mono">
-                    {w.id}
-                  </div>
-                </button>
-                <button
-                  className="rounded p-1 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-danger"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    removeWorkflow(w.id)
-                  }}
-                  title={t('common.delete')}
-                  aria-label={t('common.delete')}
-                >
-                  <TrashIcon />
-                </button>
+        <>
+          {/* Search input — narrows the inline list by name / id.
+              When empty, behaves identically to the pre-feature
+              flow (just the most-recent 8). */}
+          <div className="px-2 pb-1">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t('toolbar.menu.searchPlaceholder')}
+              aria-label={t('toolbar.menu.searchPlaceholder')}
+              className="input w-full text-xs"
+            />
+          </div>
+          <ul className="max-h-64 overflow-y-auto">
+            {recent.length === 0 ? (
+              <li className="px-2 py-1 text-xs text-ink-muted">
+                {t('toolbar.menu.noMatches')}
               </li>
-            )
-          })}
-          {items.length > recent.length && (
-            <li className="px-2 py-1 text-[10px] text-ink-faint">
-              +{items.length - recent.length} more…
-            </li>
-          )}
-        </ul>
+            ) : (
+              recent.map((w) => {
+                const isCurrent = w.id === workflowId
+                return (
+                  <li
+                    key={w.id}
+                    className={[
+                      'group flex items-center gap-1 rounded px-2 py-1 hover:bg-surface-2',
+                      isCurrent ? 'bg-accent-soft' : '',
+                    ].join(' ')}
+                  >
+                    <button
+                      className="flex-1 min-w-0 text-left"
+                      onClick={async () => {
+                        await loadFromBackend(w.id)
+                      }}
+                    >
+                      <div className="truncate text-sm text-ink">{w.name}</div>
+                      <div className="truncate text-[10px] text-ink-faint font-mono">
+                        {w.id}
+                      </div>
+                    </button>
+                    <button
+                      className="rounded p-1 text-ink-faint opacity-0 group-hover:opacity-100 hover:text-danger"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeWorkflow(w.id)
+                      }}
+                      title={t('common.delete')}
+                      aria-label={t('common.delete')}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </li>
+                )
+              })
+            )}
+            {filtered.length > recent.length && (
+              <li className="px-2 py-1 text-[10px] text-ink-faint">
+                +{filtered.length - recent.length} more…
+              </li>
+            )}
+          </ul>
+        </>
       )}
     </div>
   )

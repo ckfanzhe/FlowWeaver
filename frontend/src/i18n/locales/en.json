@@ -37,6 +37,8 @@
       "importJson": "Import JSON…",
       "importJsonHint": "Import a workflow from a .json file",
       "noWorkflows": "No saved workflows yet",
+      "searchPlaceholder": "Filter by name or id…",
+      "noMatches": "No matching workflows",
       "switchUser": "Switch user",
       "switchUserHint": "Sign out and pick a different email (resets this browser)"
     },
