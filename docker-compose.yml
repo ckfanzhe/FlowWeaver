@@ -32,7 +32,10 @@ services:
   # tables in the configured schema (default `ai`), and the same
   # connection URL works for both. No separate vector service needed.
   postgres:
-    image: pgvector/pgvector:pg16
+    # Pin to a specific pgvector minor release for reproducible builds
+    # (`pg16` latest would float). `0.8.x` line gets automatic patch
+    # updates within the series; major bumps require an explicit bump.
+    image: pgvector/pgvector:0.8.0-pg16
     container_name: agnobuilder-postgres
     restart: unless-stopped
     env_file: .env
@@ -109,11 +112,12 @@ services:
       # host:container. Compose 2 lets us use the long form for
       # clarity; behaviour is identical to `8880`.
       - "8880:8880"
-    volumes:
-      # Mount a host dir so logs + any future SQLite fallback persist
-      # across rebuilds. The Postgres data is on the `pgdata` named
-      # volume above; this is for the backend's own artefacts only.
-      - ./backend/data:/app/backend/data
+    # Note: no host-side volume mount for `backend/data` — Postgres
+    # is the single source of truth (per `AGNOBUILDER_DATA_DIR` /
+    # `pgvector` architecture). The container's `/app/backend/data`
+    # is reserved for parity with the old SQLite path but never
+    # written to; the env var is kept for any future internal
+    # artefact (logs, scratch files) but doesn't need host persistence.
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8880/health"]
       interval: 10s

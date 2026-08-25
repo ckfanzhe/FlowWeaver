@@ -48,7 +48,7 @@ frontend/.tsbuildinfo*
 # Project-level artefacts (debug_server, runtime logs, local env)
 # ─────────────────────────────────────────────────────────────────
 .runtime/
-debug_server/__pycache__/
+debug_server/
 
 # Secrets — never bake into image layers. Compose re-injects from
 # the host's `.env` via `env_file:`.
