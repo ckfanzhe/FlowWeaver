@@ -127,7 +127,18 @@ def seeded_default_preset(monkeypatch, db):
     """
     import uuid
 
-    from app.db.models import LlmPreset
+    from app.db.models import LlmPreset, User
+
+    # LlmPreset.user_id is FK to users.id; insert the synthetic owner
+    # FIRST so the FK passes. ON CONFLICT keeps repeated fixture
+    # invocations within one test session idempotent.
+    db.merge(User(
+        id="tests",
+        email="tests@local",
+        # avatar/language/theme all null — fixture is the bare-minimum
+        # user row; preferences live on the LlmPreset itself.
+    ))
+    db.commit()
 
     pid = f"preset-{uuid.uuid4().hex[:8]}"
     db.add(LlmPreset(

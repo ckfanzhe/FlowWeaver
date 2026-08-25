@@ -75,17 +75,23 @@ def fail(messages: list[str]) -> int:
     return 1
 
 
-def main() -> int:
-    if not MANIFEST_PATH.exists():
-        return fail([f"{MANIFEST_PATH} not found"])
+def check_manifest(data: dict) -> list[str]:
+    """Run the structural checks on an already-parsed manifest dict.
 
-    try:
-        data = json.loads(MANIFEST_PATH.read_text())
-    except json.JSONDecodeError as e:
-        return fail([f"JSON parse error: {e}"])
-
+    Returns a list of error strings (empty = success). Refactored out
+    of `main()` so pytest can call it directly with synthesized
+    fixtures (no need to write a fixture manifest to disk). The
+    CLI entry path (`main()`) still uses this — same checks, same
+    error wording.
+    """
     errors: list[str] = []
+    seen_palette_orders: dict[int, str] = _run_checks(data, errors)
+    return errors
 
+
+def _run_checks(data: dict, errors: list[str]) -> dict[int, str]:
+    """Side-effecting helper: appends errors, returns seen palette
+    orders so `main()` can echo them in its success summary."""
     # Top-level shape.
     if data.get("schemaVersion") != 2:
         errors.append(
@@ -94,9 +100,8 @@ def main() -> int:
     nodes = data.get("nodes")
     if not isinstance(nodes, dict):
         errors.append("`nodes` must be a dict")
-        return fail(errors)
+        return {}
 
-    # Per-node shape.
     seen_palette_orders: dict[int, str] = {}
     for node_name, entry in nodes.items():
         if not isinstance(entry, dict):
@@ -144,12 +149,26 @@ def main() -> int:
                     f"node {node_name!r}: runtime needs module + builder"
                 )
 
+    return seen_palette_orders
+
+
+def main() -> int:
+    if not MANIFEST_PATH.exists():
+        return fail([f"{MANIFEST_PATH} not found"])
+
+    try:
+        data = json.loads(MANIFEST_PATH.read_text())
+    except json.JSONDecodeError as e:
+        return fail([f"JSON parse error: {e}"])
+
+    errors: list[str] = []
+    seen_palette_orders = _run_checks(data, errors)
     if errors:
         return fail(errors)
 
     print(
         f"manifest schema check: OK "
-        f"({len(nodes)} node types, "
+        f"({len(data['nodes'])} node types, "
         f"palette orders: {sorted(seen_palette_orders.keys())})"
     )
     return 0
