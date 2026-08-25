@@ -26,6 +26,7 @@
  * instead of a red line).
  */
 import { Handle, Position, useNodeId, useStore } from '@xyflow/react'
+import { memo } from 'react'
 import type { NodeType } from '../../types/workflow'
 import { useT } from '../../i18n'
 import { useTraceStore, type NodeStatus, type TraceEntry } from '../../store/traceStore'
@@ -128,7 +129,7 @@ function StatusFooter({
   return null
 }
 
-export function BaseNode({ type, label, selected, hasInput = true, hasOutput = true, children, nodeId }: Props) {
+export const BaseNode = memo(function BaseNode({ type, label, selected, hasInput = true, hasOutput = true, children, nodeId }: Props) {
   const { visuals, manifest } = useNodeVisuals()
   // Walk `extends` so preset types (wikipedia / brave_search / …)
   // inherit their parent's visual. See nodeStyles.resolveVisual.
@@ -215,4 +216,4 @@ export function BaseNode({ type, label, selected, hasInput = true, hasOutput = t
       )}
     </div>
   )
-}
+})
