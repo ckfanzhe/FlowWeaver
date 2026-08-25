@@ -110,9 +110,17 @@ function unreachableReason(code: string): string {
 }
 
 function CanvasInner() {
+  // Fine-grained per-field selectors — the previous wholesale
+  // `useWorkflowStore()` destructured 9 fields at once, which
+  // re-rendered CanvasInner on ANY store change (trace updates,
+  // pending changes, settings, etc.). Each selector only fires
+  // re-render when its specific slice changes (Zustand default
+  // equality is `Object.is`). Action functions stay in a single
+  // destructure because they're referentially stable across
+  // renders (Zustand exposes them once on store init).
+  const nodes = useWorkflowStore((s) => s.nodes)
+  const edges = useWorkflowStore((s) => s.edges)
   const {
-    nodes,
-    edges,
     addNode,
     addEdge,
     removeNode,
