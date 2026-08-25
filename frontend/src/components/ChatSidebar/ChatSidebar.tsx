@@ -55,6 +55,7 @@ import {
 import { ChatMessageParts } from '../ChatMessageParts/ChatMessageParts'
 import { ChatRoleContext } from '../ChatMessageParts/chatRoleContext'
 import { DropdownMenu, type MenuItem } from '../UI/DropdownMenu'
+import { TrashIcon } from '../UI/Icons'
 
 type Mode = 'run' | 'build'
 
@@ -500,7 +501,7 @@ function ComposerToolbar({
           aria-label={t('chat.clear')}
           className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium text-ink-muted hover:text-ink hover:bg-surface-2 focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
         >
-          <TrashIcon />
+          <TrashIcon className="h-3.5 w-3.5" />
           <span>{t('chat.clear')}</span>
         </button>
       </div>
@@ -1031,32 +1032,9 @@ function useEffectScrollToBottom(
 
 // ───────────────────────────────────────────────────────────────
 // Inline icons — kept local to the chat surface because the rest
-// of the app uses its own icon set (`UI/Icons.tsx`). A chat-bubble
-// and a small trash glyph are chat-specific affordances that
-// don't belong in the shared icon file.
+// of the app uses its own icon set (`UI/Icons.tsx`). Trash is now
+// imported from there (it's not chat-specific).
 // ───────────────────────────────────────────────────────────────
-
-function TrashIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 6h18" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-      <path d="M10 11v6" />
-      <path d="M14 11v6" />
-    </svg>
-  )
-}
 
 function ClipboardIcon() {
   // Two stacked rectangles with a clip on top — matches the
