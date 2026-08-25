@@ -169,7 +169,6 @@ class BranchStrategy(NodeStrategy):
     COMPOUND_PASS: ClassVar[Optional[int]] = 20
     IS_TOOL_SOURCE: ClassVar[bool] = False
     NEEDS_TOOL_WIRING: ClassVar[bool] = False
-    SKIP_PASS1: ClassVar[bool] = False
     STEP_WRAPPER: ClassVar[Literal["agent", "ask", "none"]] = "none"
 
     # ─────────────────────────────────────────────────────────────

@@ -210,24 +210,6 @@ class KnowledgeStrategy(NodeStrategy):
         from app.core.compile._helpers.knowledge_expr import knowledge_block
         return knowledge_block(nid, node, ctx)
 
-    # ─────────────────────────────────────────────────────────────
-    # build_tools() — N/A for knowledge nodes
-    # ─────────────────────────────────────────────────────────────
-    # Override the base's empty default to keep the contract obvious:
-    # a knowledge node produces a `Knowledge` object, NOT agno tools.
-    # Tool factories dispatch on `IS_TOOL_SOURCE=True` and skip us.
-    def build_tools(  # noqa: D401 — simple override
-        self,
-        nid: str,
-        ir_node: Any,
-        ir_nodes: dict,
-        *,
-        user_id: Optional[str] = None,
-    ) -> list:
-        """Knowledge nodes produce no tools — kept here for symmetry
-        with the base ABC. Returns an empty list."""
-        return []
-
 __all__ = [
     "KnowledgeStrategy",
     "_normalize_cfg",
