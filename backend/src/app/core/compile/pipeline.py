@@ -37,12 +37,13 @@ Adding a new node type means dropping a strategy class under
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable, Literal
 
 from app.core.compile._helpers.ir_helpers import nodes_by_id_from_ir
 from app.core.graph import validate_workflow
 from app.core.ir import WorkflowIR, build_ir
 from app.core.node_types import NODE_TYPES
+from app.core.strategies.base import NodeStrategy
 
 @dataclass
 class CompileCtx:
@@ -164,20 +165,48 @@ def build_workflow(
     _pass3_knowledge_wiring(ctx)
     return _assemble(workflow_id, name, ir, ctx, start_node_id=start_node_id)
 
-def _pass0_tool_sources(ctx: CompileCtx, db_nodes: list[dict]) -> None:
-    """Build the tool-source pool. These never appear in `wf.steps` —
-    they get attached to agents in pass 3."""
+def _pass0_build_source_pool(
+    ctx: CompileCtx,
+    *,
+    predicate: Callable[[NodeStrategy], bool],
+    target: dict[str, Any],
+    list_or_single: Literal["list", "single"],
+) -> None:
+    """Shared kernel for `_pass0_tool_sources` and `_pass0_knowledge_sources`.
+
+    Walks every node once, applies the strategy's source-predicate (e.g.
+    `IS_TOOL_SOURCE` / `IS_KNOWLEDGE_SOURCE`), invokes
+    `strategy.build(nid, node, ctx)`, and stores the result either as
+    a normalised list (tool-source: agno's `tools=[...]` accepts N) or
+    as a single object (knowledge-source: agno's `knowledge=...` is
+    singular). The two pre-refactor passes were 13 lines each of
+    structural copy-paste; this kernel collapses them to one.
+    """
     for nid, node in ctx.nodes_by_id.items():
         spec = NODE_TYPES.get(node["type"])
         if spec is None:
             continue
         strategy = spec.strategy
-        if not strategy.IS_TOOL_SOURCE:
+        if not predicate(strategy):
             continue
-        objs = strategy.build(nid, node, ctx)
-        if not isinstance(objs, list):
-            objs = [objs]
-        ctx.tool_objects[nid] = list(objs or [])
+        obj = strategy.build(nid, node, ctx)
+        if list_or_single == "list":
+            if not isinstance(obj, list):
+                obj = [obj]
+            target[nid] = list(obj or [])
+        else:
+            target[nid] = obj
+
+
+def _pass0_tool_sources(ctx: CompileCtx, db_nodes: list[dict]) -> None:
+    """Build the tool-source pool. These never appear in `wf.steps` —
+    they get attached to agents in pass 3."""
+    _pass0_build_source_pool(
+        ctx,
+        predicate=lambda s: s.IS_TOOL_SOURCE,
+        target=ctx.tool_objects,
+        list_or_single="list",
+    )
 
 
 def _pass0_knowledge_sources(ctx: CompileCtx, db_nodes: list[dict]) -> None:
@@ -191,15 +220,12 @@ def _pass0_knowledge_sources(ctx: CompileCtx, db_nodes: list[dict]) -> None:
     wiring pass (`_pass3_knowledge_wiring`) attaches it to an agent
     via `agent_obj.knowledge = kb` (singular, not `tools=[...]`).
     """
-    for nid, node in ctx.nodes_by_id.items():
-        spec = NODE_TYPES.get(node["type"])
-        if spec is None:
-            continue
-        strategy = spec.strategy
-        if not strategy.IS_KNOWLEDGE_SOURCE:
-            continue
-        obj = strategy.build(nid, node, ctx)
-        ctx.knowledge_objects[nid] = obj
+    _pass0_build_source_pool(
+        ctx,
+        predicate=lambda s: s.IS_KNOWLEDGE_SOURCE,
+        target=ctx.knowledge_objects,
+        list_or_single="single",
+    )
 
 def _pass1_objects(ctx: CompileCtx) -> None:
     """Build the agent / ask objects. Compound nodes are
