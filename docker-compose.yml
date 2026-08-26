@@ -56,9 +56,23 @@ services:
     volumes:
       # Named volume survives `docker compose down`; `down -v` wipes.
       - pgdata:/var/lib/postgresql/data
-    # Postgres listens on :5432 internally; we deliberately do NOT
-    # publish :5432 to the host — only the backend container needs
+    # Postgres listens on :5432 internally. We deliberately do NOT
+    # publish :5432 to the LAN — only the backend container needs
     # access via the compose network.
+    #
+    # The `5432:5432` mapping below is NOT for production exposure.
+    # It's a Docker Desktop WSL2 workaround: without an explicit
+    # `ports:` block, the WSL distro can't reach the container's
+    # 5432 (Docker Desktop's WSL integration only forwards
+    # published ports, not bridged IPs). Local pytest uses
+    # `127.0.0.1:5432` via the conftest engine fixture, so the
+    # port needs to be reachable from the WSL process. If you're
+    # running on a real Linux host (not WSL2) and want a stricter
+    # setup, comment out the `ports:` block below — the backend
+    # service still talks to Postgres via the compose-network
+    # hostname `postgres:5432`, only host-side test access breaks.
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
