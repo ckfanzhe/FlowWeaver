@@ -81,20 +81,23 @@ class WorkflowNode(BaseModel):
         from app.core._compat import migrate_node_dict
         from app.core.node_types import NODE_TYPES as _REGISTRY
 
+        # Always run `migrate_node_dict` first — it's idempotent on
+        # already-migrated nodes (the type-rewrite block no-ops for
+        # known types) AND it rewrites legacy config discriminators
+        # (e.g. knowledge's `vectorDb='lancedb'` → `'pgvector'`).
+        # Without running it for KNOWN types too, DB rows saved
+        # before the v1 simplification would crash
+        # `_validate_config` with `Literal['pgvector']` rejection.
+        node_dict = {"type": self.type, "data": self.data}
+        migrate_node_dict(node_dict)
+        if node_dict["type"] != self.type:
+            self.type = node_dict["type"]
+
         if self.type not in _REGISTRY:
-            # Legacy alias path: rewrite in place via the migration
-            # layer, then re-check. We mutate `self.data` (a dict the
-            # caller owns) so the same object the validator sees is
-            # what subsequent generations of the Pydantic model carry.
-            node_dict = {"type": self.type, "data": self.data}
-            migrate_node_dict(node_dict)
-            if node_dict["type"] != self.type:
-                self.type = node_dict["type"]
-            if self.type not in _REGISTRY:
-                raise ValueError(
-                    f"unknown node type {self.type!r}; known types: "
-                    f"{sorted(_REGISTRY)}"
-                )
+            raise ValueError(
+                f"unknown node type {self.type!r}; known types: "
+                f"{sorted(_REGISTRY)}"
+            )
         return self
 
     @model_validator(mode="after")

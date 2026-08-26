@@ -20,6 +20,15 @@ The tuple shape extends to `(new_type, default_mode, default_preset)`
 — preset aliases inject `config.preset = "<name>"` after rewriting
 the type to `tool`. The prior `(new_type, default_mode)` shape is
 preserved semantically for non-preset rows (default_preset=None).
+
+Also handles config-discriminator rewrites for the knowledge-node
+v1 simplification (`lancedb`/`chroma` → `pgvector`,
+`sentence_transformers`/`cohere` → `openai`). Without this,
+DB rows saved before the v1 cutover would crash Pydantic
+validation on read (`Literal['pgvector']` rejects `'lancedb'`).
+The migration rewrites in place; the rewrite happens BEFORE
+`WorkflowNode._validate_config` so the strict schema sees the
+post-migration shape.
 """
 from __future__ import annotations
 
@@ -58,9 +67,41 @@ LEGACY_NODE_ALIASES: dict[str, tuple[str, Optional[str], Optional[str]]] = {
     "arxiv_search": ("tool", None, "arxiv_search"),
 }
 
+# Knowledge-node config discriminator rewrites (v1 simplification).
+# `KnowledgeNodeConfig.vectorDb` and `.embedder` are `Literal` types
+# in v1 (`'pgvector'` / `'openai'` only). Pre-cutover rows carry the
+# legacy values from the 3x3 backend matrix; without an in-place
+# rewrite on read, `WorkflowNode._validate_config` raises
+# `ValidationError` and the entire `GET /workflows/<id>` 500s.
+#
+# The rewrite is idempotent — v1 values pass through unchanged so
+# the function is safe to call on every node.
+LEGACY_KNOWLEDGE_CONFIG_REWRITES: dict[str, dict[str, str]] = {
+    "vectorDb": {
+        "lancedb":  "pgvector",
+        "chroma":   "pgvector",
+        "pgvector": "pgvector",
+    },
+    "embedder": {
+        "sentence_transformers": "openai",
+        "cohere":                "openai",
+        "openai":                "openai",
+    },
+}
+
 def is_legacy_type(node_type: str) -> bool:
     """True if `node_type` is a known legacy alias."""
     return node_type in LEGACY_NODE_ALIASES
+
+def _rewrite_knowledge_discriminators(cfg: dict[str, Any]) -> None:
+    """Apply `LEGACY_KNOWLEDGE_CONFIG_REWRITES` to a knowledge-node
+    `config` dict in-place. No-op for unknown fields or values
+    that are already v1-compliant.
+    """
+    for field, mapping in LEGACY_KNOWLEDGE_CONFIG_REWRITES.items():
+        v = cfg.get(field)
+        if isinstance(v, str) and v in mapping:
+            cfg[field] = mapping[v]
 
 def migrate_node_dict(node: dict[str, Any]) -> dict[str, Any]:
     """If `node['type']` is a legacy alias, rewrite it to the new type
@@ -76,6 +117,17 @@ def migrate_node_dict(node: dict[str, Any]) -> dict[str, Any]:
     """
     nt = node.get("type")
     if isinstance(nt, str):
+        # Knowledge-node config discriminator rewrite — applies for
+        # `type == "knowledge"` only. Other types carry their own
+        # config shapes that don't have `vectorDb` / `embedder`, so
+        # the rewrite is a harmless no-op for them. Runs BEFORE
+        # the type-rewrite block below so a hypothetical future
+        # `knowledge` alias would still get its cfg migrated first.
+        data = node.get("data")
+        if isinstance(data, dict) and nt == "knowledge":
+            cfg = data.get("config")
+            if isinstance(cfg, dict):
+                _rewrite_knowledge_discriminators(cfg)
         alias = LEGACY_NODE_ALIASES.get(nt)
         if alias is not None:
             new_type, default_mode, default_preset = alias
@@ -109,6 +161,7 @@ def migrate_envelope(envelope: dict[str, Any]) -> dict[str, Any]:
 
 __all__ = [
     "LEGACY_NODE_ALIASES",
+    "LEGACY_KNOWLEDGE_CONFIG_REWRITES",
     "is_legacy_type",
     "migrate_node_dict",
     "migrate_envelope",
