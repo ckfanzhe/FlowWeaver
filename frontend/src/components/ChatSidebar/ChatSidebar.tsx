@@ -81,8 +81,12 @@ export function ChatSidebar(_props: ChatSidebarProps = {}): JSX.Element {
   const handleSetMode = useCallback(
     (next: Mode) => {
       if (next === mode) return
-      if (mode === 'run') dispatchRuntimeReset()
-      else dispatchBuilderReset()
+      // Switching tabs does NOT clear the tab we're leaving. Each
+      // tab owns its own transcript (Build ↔ `useBuilderChatStore`,
+      // Run ↔ `useChatRunStore`) — clearing the old one on switch
+      // would lose the user's history every time they peek at the
+      // other side. `handleClear` above is the explicit "wipe this
+      // tab" action; the toggle is just "show the other one".
       setMode(next)
     },
     [mode],

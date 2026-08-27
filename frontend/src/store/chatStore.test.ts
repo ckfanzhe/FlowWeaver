@@ -18,6 +18,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+// fake-indexeddb polyfill — the runtime chat store registers a
+// debounced auto-save that opens an IDB connection via
+// `chatSessionStore`. Without the polyfill the auto-save path
+// throws, keeping a pending Promise alive and stalling the runner.
+// Same rationale as `builderChatStore.test.ts`.
+import 'fake-indexeddb/auto'
+
 import {
   dispatchCancel,
   feedRuntimeEvent,
@@ -473,4 +480,15 @@ test('cancel() does nothing when sessionId is missing', async () => {
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+// chatSessionStore loaded transitively by chatRunStore opens an
+// IDB connection + has a 300ms debounced auto-save timer. Both
+// keep the Node event loop alive past the last test; mirror the
+// cleanup pattern from `workflowStore.snapshot.test.ts`.
+test.after(async () => {
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase('agnobuilder-chat-sessions')
+    req.onsuccess = req.onerror = req.onblocked = () => resolve()
+  })
+  setTimeout(() => process.exit(0), 50).unref()
 })

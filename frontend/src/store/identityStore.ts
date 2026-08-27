@@ -43,6 +43,7 @@ import { usersApi } from '../api/users'
 import { setLocale, type Locale } from '../i18n'
 import { applyTheme, type Theme } from '../lib/theme'
 import { useChatRunStore } from './chatRunStore'
+import { useBuilderChatStore } from './builderChatStore'
 import { useWorkflowListStore } from './workflowListStore'
 import { useWorkflowStore } from './workflowStore'
 
@@ -280,17 +281,39 @@ export const useIdentityStore = create<IdentityState & IdentityActions>(
       })
       // Reset the workflow state so the new identity doesn't see the
       // previous user's canvas / list. The workflow store's own
-      // subscriber will clear `agnobuilder.lastWorkflowId` when
-      // `workflowId` flips to null (see `workflowStore.ts`).
+      // subscriber will clear the current user's `lastWorkflowId`
+      // slot when `workflowId` flips to null (see `workflowStore.ts`).
       useWorkflowStore.getState().reset()
       void useWorkflowListStore.getState().refresh()
-      //  multi-user: clear the chat transcript + session
+      // multi-user: clear the chat transcript + session
       // state too. Without this the new identity lands in the same
       // browser and sees the previous user's messages + a stale
       // `sessionId` from a paused run they can't resume (the new
       // user's `X-User-Id` will get 404 on that sid because the
       // runtime now scopes by user).
       useChatRunStore.getState().resetAll()
+      // Also clear the builder chat. The Run store was reset here
+      // since the start of the multi-user refactor, but the Builder
+      // store wasn't — without this a sign-out leaves the previous
+      // user's staged diff + messages visible to the next identity
+      // on the same browser. Same privacy rationale as the Run
+      // reset above.
+      useBuilderChatStore.getState().reset()
+      // NB: we deliberately do NOT call `deleteUserChats(userId)`
+      // here. Earlier revisions wiped the IndexedDB envelopes on
+      // signOut for paranoia, but that broke the "switch accounts,
+      // switch back, history restored" flow the user expects —
+      // cross-account on the same browser is exactly when the
+      // previous user's data needs to survive. The IndexedDB
+      // composite key (`userId::workflowId`) already prevents
+      // cross-user UI bleed: user B's chat sidebar can only read
+      // keys prefixed `B::`, so user A's data is invisible to B
+      // even though it still sits on disk. (Data on disk during a
+      // session is the same regime as the rest of IndexedDB — not a
+      // new privacy surface.) A future server-side persistence
+      // layer can revisit this and either delete on signOut or
+      // scope per-user encryption; for now we keep the simpler
+      // "remember across sessions" behaviour.
       // Notify other tabs to sign out too — so opening the same
       // platform in two tabs and signing out from one doesn't leave
       // the other tab with a stale identity. The receiving listener

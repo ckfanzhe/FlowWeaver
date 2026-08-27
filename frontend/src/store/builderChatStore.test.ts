@@ -12,6 +12,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
+// fake-indexeddb polyfill — the builder chat store registers a
+// debounced auto-save that opens an IDB connection via
+// `chatSessionStore`. Without the polyfill the auto-save path
+// throws, keeping a pending Promise alive and stalling the runner.
+import 'fake-indexeddb/auto'
+
 import { useBuilderChatStore } from './builderChatStore'
 
 function reset() {
@@ -83,4 +89,16 @@ test('appendToLastText does NOT bridge across non-text messages', () => {
     (msgs[3].data as { content: string }).content,
     'Second reply fragment 1. Fragment 2.',
   )
+})
+
+// chatSessionStore loaded transitively by builderChatStore opens
+// an IDB connection + has a 300ms debounced auto-save timer. Both
+// keep the Node event loop alive past the last test; mirror the
+// cleanup pattern from `workflowStore.snapshot.test.ts`.
+test.after(async () => {
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase('agnobuilder-chat-sessions')
+    req.onsuccess = req.onerror = req.onblocked = () => resolve()
+  })
+  setTimeout(() => process.exit(0), 50).unref()
 })

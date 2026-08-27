@@ -36,6 +36,14 @@ import type {
   BuilderChatMessage,
   BuilderDiff,
 } from '../types/chatBuilder'
+import {
+  chatSessionKey,
+  getBuildChat,
+  putBuildChat,
+  type BuildChatEnvelope,
+} from '../lib/chatSessionStore'
+import { useIdentityStore } from './identityStore'
+import { useWorkflowStore } from './workflowStore'
 
 export interface BuilderChatState {
   messages: BuilderChatMessage[]
@@ -143,3 +151,94 @@ export const useBuilderChatStore = create<BuilderChatState & BuilderChatActions>
       }),
   }),
 )
+
+// ─────────────────────────────────────────────────────────────────
+// Persistence: 300ms debounced auto-save to IndexedDB. Mirror of
+// `chatRunStore`'s subscriber (same `chatSessionKey` helper for the
+// composite `userId::workflowId` namespace, same debounce window).
+//
+// Persisted: `messages`, `diff`, `finished`, `selectedPresetId`.
+// NOT persisted: `busy` (stream is dead on refresh), `error`
+// (transient toast), `sessionId` (the builder's in-memory session
+// id is server-scoped; the next `send` mints a new one).
+// ─────────────────────────────────────────────────────────────────
+const CHAT_SAVE_DEBOUNCE_MS = 300
+
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
+let autoSaveInFlight = false
+let autoSavePending = false
+
+function _resolveKey(): string | null {
+  const userId = useIdentityStore.getState().userId
+  if (!userId) return null
+  const workflowId = useWorkflowStore.getState().workflowId
+  return chatSessionKey(userId, workflowId)
+}
+
+function _runAutoSave(): void {
+  if (autoSaveInFlight) {
+    autoSavePending = true
+    return
+  }
+  const key = _resolveKey()
+  if (!key) return
+  autoSaveInFlight = true
+  const s = useBuilderChatStore.getState()
+  const env: BuildChatEnvelope = {
+    key,
+    messages: s.messages,
+    diff: s.diff,
+    finished: s.finished,
+    selectedPresetId: s.selectedPresetId,
+    savedAt: Date.now(),
+  }
+  putBuildChat(env).finally(() => {
+    autoSaveInFlight = false
+    if (autoSavePending) {
+      autoSavePending = false
+      _scheduleAutoSave()
+    }
+  })
+}
+
+function _scheduleAutoSave(): void {
+  if (autoSaveTimer !== null) clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(() => {
+    autoSaveTimer = null
+    _runAutoSave()
+  }, CHAT_SAVE_DEBOUNCE_MS)
+}
+
+if (typeof window !== 'undefined') {
+  useBuilderChatStore.subscribe((state, prev) => {
+    if (
+      state.messages !== prev.messages ||
+      state.diff !== prev.diff ||
+      state.finished !== prev.finished ||
+      state.selectedPresetId !== prev.selectedPresetId
+    ) {
+      _scheduleAutoSave()
+    }
+  })
+}
+
+/**
+ * Restore the builder-chat transcript from IndexedDB. Called by
+ * `App.tsx` after `loadFromBackend(workflowId)` resolves so the
+ * composite key matches. `busy` / `error` are NOT restored (a
+ * stream can't resume from a refresh and a stale error from before
+ * the refresh shouldn't leak into the new session).
+ */
+export async function rehydrateChatBuilder(
+  userId: string,
+  workflowId: string | null,
+): Promise<void> {
+  const env = await getBuildChat(chatSessionKey(userId, workflowId))
+  if (!env) return
+  useBuilderChatStore.setState({
+    messages: env.messages,
+    diff: env.diff,
+    finished: env.finished,
+    selectedPresetId: env.selectedPresetId,
+  })
+}

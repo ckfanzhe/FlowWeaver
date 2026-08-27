@@ -38,8 +38,17 @@ import { useIdentityStore } from './identityStore'
  * the id string. We deliberately do NOT persist nodes/edges here:
  * editing happens against the backend's source of truth, and the
  * user can always re-open a workflow from the "Load" menu.
+ *
+ * Per-user namespacing (`<userId>::<workflowId>` style): the
+ * lastWorkflowId is keyed by userId so a different identity on
+ * the same browser doesn't inherit the previous user's "last
+ * opened" workflow on sign-in. The earlier `agnobuilder.lastWorkflowId`
+ * global key was a privacy gap (memory
+ * `frontend-snapshot-recovery.md`); this format fixes it.
  */
-const LAST_WORKFLOW_ID_KEY = 'agnobuilder.lastWorkflowId'
+function lastWorkflowIdKey(userId: string): string {
+  return `agnobuilder.lastWorkflowId.${userId}`
+}
 
 /**
  * Auto-save debounce window. After the user stops making edits for
@@ -50,19 +59,19 @@ const LAST_WORKFLOW_ID_KEY = 'agnobuilder.lastWorkflowId'
  */
 const AUTO_SAVE_DEBOUNCE_MS = 800
 
-function readPersistedWorkflowId(): string | null {
+function readPersistedWorkflowId(userId: string): string | null {
   try {
-    return localStorage.getItem(LAST_WORKFLOW_ID_KEY)
+    return localStorage.getItem(lastWorkflowIdKey(userId))
   } catch {
     // localStorage can throw in private mode / SSR / sandboxed iframes.
     return null
   }
 }
 
-function writePersistedWorkflowId(id: string | null): void {
+function writePersistedWorkflowId(userId: string, id: string | null): void {
   try {
-    if (id) localStorage.setItem(LAST_WORKFLOW_ID_KEY, id)
-    else localStorage.removeItem(LAST_WORKFLOW_ID_KEY)
+    if (id) localStorage.setItem(lastWorkflowIdKey(userId), id)
+    else localStorage.removeItem(lastWorkflowIdKey(userId))
   } catch {
     /* ignore — persistence is best-effort */
   }
@@ -532,22 +541,38 @@ function defaultConfig(type: NodeType): Record<string, unknown> {
 //     App.tsx checks the snapshot and offers Restore/Discard.
 //
 // We subscribe (instead of calling writePersistedWorkflowId inside
-// each action) so we get exactly-once writes per state change and
-// can't forget to update localStorage when a new setter is added.
+// each action) so we can't forget to update localStorage when a new
+// setter is added. Every state mutation fires this subscriber; the
+// body itself only writes when the *meaningful* inputs change
+// (`workflowId` + `dirty` + `userId`), so redundant writes are rare:
+//   • Same `workflowId` + same `userId` + `dirty=false` re-writes
+//     the same value — cheap, idempotent, fine.
+//   • `dirty=true` doesn't touch localStorage (the persisted id
+//     reflects the last *saved* version, not in-progress edits).
+//   • `userId=null` short-circuits (sign-out, anonymous).
+//
+// Earlier revisions kept a module-level `(lastPersistedId,
+// lastPersistedUserId)` cache to skip redundant writes, but the
+// cache leaked across tests (module-level `let` is process-global
+// in Node's `node --test` runner) and required test-only reset
+// hooks. The cache saved microseconds at most; the simpler
+// shape here is easier to reason about.
 // ─────────────────────────────────────────────────────────────────
-let lastPersistedId: string | null | undefined = undefined
 useWorkflowStore.subscribe((state) => {
   const id = state.workflowId
-  if (id === lastPersistedId) return
+  // Per-user namespacing: only write localStorage when we have a
+  // current userId (otherwise we'd write under an empty key and
+  // mix identities). `useIdentityStore.getState()` reads the live
+  // userId so a sign-in between state changes sees the new id.
+  const userId = useIdentityStore.getState().userId
+  if (!userId) return
   // Only persist when the canvas is in sync with the backend. If the
   // user is mid-edit (dirty), skip — the persisted id (if any) still
   // reflects the last saved version.
   if (id && !state.dirty) {
-    writePersistedWorkflowId(id)
-    lastPersistedId = id
+    writePersistedWorkflowId(userId, id)
   } else if (!id) {
-    writePersistedWorkflowId(null)
-    lastPersistedId = null
+    writePersistedWorkflowId(userId, null)
   }
   // else: id is set AND dirty → leave localStorage untouched.
 })
@@ -685,9 +710,13 @@ useWorkflowStore.subscribe((state, prev) => {
 })
 
 /**
- * Read the persisted workflow id (if any) at module load. Callers
- * use this to decide whether to call `loadFromBackend` on app mount.
+ * Read the persisted workflow id (if any) for `userId` at module load.
+ * Callers use this to decide whether to call `loadFromBackend` on
+ * app mount. Per-user namespacing: returns null when `userId` is
+ * falsy so an unauthenticated browser read never accidentally
+ * picks up another user's last-opened workflow.
  */
-export function getPersistedWorkflowId(): string | null {
-  return readPersistedWorkflowId()
+export function getPersistedWorkflowId(userId: string): string | null {
+  if (!userId) return null
+  return readPersistedWorkflowId(userId)
 }

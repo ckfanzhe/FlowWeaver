@@ -16,6 +16,13 @@ import assert from 'node:assert/strict'
 import { useChatStore } from './chatStore'
 import { rehydratePausedSession } from './chatActions'
 
+// fake-indexeddb polyfill — chatSessionStore loaded transitively
+// by chatRunStore opens an IDB connection via idb. Without the
+// polyfill the auto-save path throws, keeping a pending Promise
+// alive and stalling the runner. Same rationale as
+// `chatStore.test.ts`.
+import 'fake-indexeddb/auto'
+
 // Mock fetch with canned responses per URL.
 const originalFetch = globalThis.fetch
 function mockFetch(
@@ -185,4 +192,15 @@ test('rehydratePausedSession: 404 swallowed silently (stale session id)', async 
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+// chatSessionStore loaded transitively by chatRunStore opens an
+// IDB connection + has a 300ms debounced auto-save timer. Both
+// keep the Node event loop alive past the last test; mirror the
+// cleanup pattern from `workflowStore.snapshot.test.ts`.
+test.after(async () => {
+  await new Promise<void>((resolve) => {
+    const req = indexedDB.deleteDatabase('agnobuilder-chat-sessions')
+    req.onsuccess = req.onerror = req.onblocked = () => resolve()
+  })
+  setTimeout(() => process.exit(0), 50).unref()
 })

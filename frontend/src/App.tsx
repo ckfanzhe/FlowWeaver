@@ -4,6 +4,8 @@ import { useAppUiStore } from './store/appUiStore'
 import { useWorkflowListStore } from './store/workflowListStore'
 import { useIdentityStore } from './store/identityStore'
 import { useChatRunStore } from './store/chatRunStore'
+import { rehydrateChatRun } from './store/chatRunStore'
+import { rehydrateChatBuilder } from './store/builderChatStore'
 import { useLocale, useT } from './i18n'
 import { useThemeApplier } from './lib/useThemeApplier'
 import { useFileDrop } from './hooks/useFileDrop'
@@ -95,9 +97,27 @@ function App() {
   // same logic runs whether the workflow is "owned" on cold start or
   // discovered after a list refresh.
   const [restoreOffer, setRestoreOffer] = useState<SnapshotEnvelope | null>(null)
+  // Re-render hooks must be called unconditionally, so we subscribe to
+  // userId / workflowId at the top level — the effect below uses the
+  // current values to gate rehydration. `identityReady` from the store
+  // isn't the right gate here because once it flips true on the first
+  // sign-in it stays true forever; we need to re-fire on userId /
+  // workflowId transitions, not just the initial ready.
+  const userIdForRehydrate = useIdentityStore((s) => s.userId)
+  const workflowIdForRehydrate = useWorkflowStore((s) => s.workflowId)
+  useEffect(() => {
+    if (!userIdForRehydrate || !workflowIdForRehydrate) return
+    // Fire-and-forget — the empty canvas renders first; chat messages
+    // slide in once the IndexedDB read resolves. No-op when no
+    // envelope exists for this composite key.
+    void rehydrateChatRun(userIdForRehydrate, workflowIdForRehydrate)
+    void rehydrateChatBuilder(userIdForRehydrate, workflowIdForRehydrate)
+  }, [userIdForRehydrate, workflowIdForRehydrate])
+
   useEffect(() => {
     if (!identityReady) return
-    const id = getPersistedWorkflowId()
+    const userId = useIdentityStore.getState().userId
+    const id = userId ? getPersistedWorkflowId(userId) : null
     if (!id) return
     if (useWorkflowStore.getState().workflowId === id) return
     let cancelled = false
@@ -106,9 +126,12 @@ function App() {
       await useWorkflowStore.getState().loadFromBackend(id)
       if (cancelled) return
       const { error, workflowId, backendUpdatedAt } = useWorkflowStore.getState()
-      const userId = useIdentityStore.getState().userId
+      // Re-read userId — signIn could have flipped between the
+      // getPersistedWorkflowId() call above and now. Use the live
+      // value to scope the snapshot lookup.
+      const currentUserId = useIdentityStore.getState().userId
       // P1 — reconcile against IndexedDB.
-      const snap = userId ? await getSnapshot(snapshotKey(userId, id)) : undefined
+      const snap = currentUserId ? await getSnapshot(snapshotKey(currentUserId, id)) : undefined
       if (cancelled) return
       if (error || workflowId !== id) {
         // Backend failed. If we have a snapshot, restore silently —
@@ -121,7 +144,15 @@ function App() {
           useWorkflowStore.setState({
             workflowId: null, error: null, nodes: [], edges: [],
           })
-          try { localStorage.removeItem('agnobuilder.lastWorkflowId') } catch { /* ignore */ }
+          // Per-user lastWorkflowId: clear the slot for the current
+          // user only — other users' slots stay intact. The clear
+          // itself goes through the store's subscriber when
+          // workflowId flips to null; this explicit clear handles
+          // the "workflow not found on backend" case where
+          // workflowId already matches what we're clearing.
+          if (currentUserId) {
+            try { localStorage.removeItem(`agnobuilder.lastWorkflowId.${currentUserId}`) } catch { /* ignore */ }
+          }
         }
         return
       }
@@ -163,7 +194,12 @@ function App() {
         // doesn't leak the previous user's dirty edits.
         const userId = useIdentityStore.getState().userId
         if (userId) void deleteSnapshot(snapshotKey(userId, id))
-        try { localStorage.removeItem('agnobuilder.lastWorkflowId') } catch { /* ignore */ }
+        // Per-user lastWorkflowId: clear the current user's slot
+        // only. Other users' slots stay intact for when they sign
+        // back in.
+        if (userId) {
+          try { localStorage.removeItem(`agnobuilder.lastWorkflowId.${userId}`) } catch { /* ignore */ }
+        }
       }
     })
     return () => { cancelled = true }
@@ -184,7 +220,13 @@ function App() {
   // a template OR chooses "Start empty".
   useEffect(() => {
     if (!identityReady) return
-    if (getPersistedWorkflowId()) return
+    // Onboarding gate: skip if the current user already has a
+    // lastWorkflowId (any persisted workflow), OR has marked
+    // themselves as onboarded. Per-user — user A signing in for
+    // the first time still gets the gallery even if user B's slot
+    // is populated.
+    const currentUserId = useIdentityStore.getState().userId
+    if (currentUserId && getPersistedWorkflowId(currentUserId)) return
     try {
       if (localStorage.getItem('agnobuilder.onboarded')) return
     } catch {
