@@ -76,6 +76,12 @@ def init_db() -> None:
     # the ALTER TABLE adds it to existing dev databases so the app
     # keeps booting without a manual schema reset.
     _add_column_if_missing("llm_presets", "thinking", "BOOLEAN NOT NULL DEFAULT 0")
+    # Per-call sampling / length knobs on LLM presets. NULL = unset
+    # (use model default). No DEFAULT clause on purpose — pre-existing
+    # rows should land NULL so the runtime's omit-if-None rule fires.
+    _add_column_if_missing("llm_presets", "temperature", "FLOAT")
+    _add_column_if_missing("llm_presets", "top_p", "FLOAT")
+    _add_column_if_missing("llm_presets", "max_tokens", "INTEGER")
     # Multi-user / collaboration. New `created_by` + `tenant_id` columns
     # on `workflows` so list / permission lookups can scope by user
     # without a join. Default to the placeholder values (`user-default`

@@ -120,6 +120,12 @@ def create_preset(
         base_url=payload.base_url or None,
         is_default=payload.is_default,
         thinking=payload.thinking,
+        # Sampling / length knobs. NULL passes through as-is — the
+        # column is nullable, and `build_model`'s omit-if-None rule
+        # keeps the kwarg out of the agno Model constructor.
+        temperature=payload.temperature,
+        top_p=payload.top_p,
+        max_tokens=payload.max_tokens,
         user_id=caller_id,
     )
     if payload.is_default:

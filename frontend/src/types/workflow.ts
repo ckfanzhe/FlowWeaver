@@ -126,6 +126,13 @@ export interface LlmPreset {
   // OpenAI `reasoning_effort="medium"`, Gemini `thinking_budget=N`).
   // Surfaced by the Settings → LLM editor; absent for older presets.
   thinking?: boolean;
+  // Sampling / length knobs. NULL / undefined = "use the model's own
+  // default" — the runtime's omit-if-None rule keeps the kwarg out of
+  // the agno Model constructor. Surfaced by the Settings → LLM editor's
+  // advanced panel; absent for older presets.
+  temperature?: number | null;
+  topP?: number | null;
+  maxTokens?: number | null;
   //  — per-user binding. NULL / undefined means a
   // system-shared row (visible to everyone, read-only via the API);
   // non-empty means the owning user's id. The Settings → LLM editor
@@ -146,6 +153,12 @@ export interface LlmPresetCreate {
   // P3 : see `LlmPreset.thinking`. Optional on create —
   // the backend defaults to false when omitted.
   thinking?: boolean;
+  // Sampling / length knobs. All optional — omit (or send `null`) to
+  // leave the preset at the model's own default. Backend validates the
+  // ranges (temperature ∈ [0,2], topP ∈ [0,1], maxTokens ∈ [1,100000]).
+  temperature?: number | null;
+  topP?: number | null;
+  maxTokens?: number | null;
 }
 
 // ─────────────────────────────────────────────────────────────────

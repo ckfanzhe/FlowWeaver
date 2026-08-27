@@ -176,6 +176,14 @@ def seeded_default_preset(monkeypatch, db):
             "api_key": row.api_key,
             "base_url": row.base_url,
             "thinking": bool(getattr(row, "thinking", False)),
+            # Sampling / length knobs — same omit-if-None contract as
+            # the real `_resolve_preset`. Missing key falls back to
+            # None so build_model's `if X is not None:` blocks keep
+            # working on older fixture rows that pre-date these
+            # columns.
+            "temperature": getattr(row, "temperature", None),
+            "top_p": getattr(row, "top_p", None),
+            "max_tokens": getattr(row, "max_tokens", None),
         }
 
     # Agent nodes run via agno-native `Step(agent=Agent(...))` —
@@ -404,6 +412,14 @@ def real_llm_preset(monkeypatch, db):
             "api_key": row.api_key,
             "base_url": row.base_url,
             "thinking": bool(getattr(row, "thinking", False)),
+            # Sampling / length knobs — same omit-if-None contract as
+            # the real `_resolve_preset`. Missing key falls back to
+            # None so build_model's `if X is not None:` blocks keep
+            # working on older fixture rows that pre-date these
+            # columns.
+            "temperature": getattr(row, "temperature", None),
+            "top_p": getattr(row, "top_p", None),
+            "max_tokens": getattr(row, "max_tokens", None),
         }
 
     monkeypatch.setattr(

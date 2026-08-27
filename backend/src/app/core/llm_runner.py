@@ -107,6 +107,11 @@ def _resolve_preset(
         # Surfaced here so `build_model` can honour the preset's
         # reasoning preference without a separate global flag.
         "thinking": bool(getattr(row, "thinking", False)),
+        # Sampling / length knobs. `getattr(..., None)` so test
+        # fixtures and older rows without the columns still work.
+        "temperature": getattr(row, "temperature", None),
+        "top_p": getattr(row, "top_p", None),
+        "max_tokens": getattr(row, "max_tokens", None),
     }
 
 def _resolve_default_preset_id(
@@ -235,11 +240,24 @@ def build_model(
         # `.get()` (not `[]`) so older test fixtures that don't include
         # `thinking` keep working — missing key defaults to False.
         thinking = bool(preset.get("thinking", False))
+        # Sampling / length knobs — preset row is the source of truth.
+        # Missing key (older rows, missing migration) defaults to None,
+        # which the omit-if-None rule below turns into "don't pass this
+        # kwarg to the provider".
+        temperature = preset.get("temperature")
+        top_p = preset.get("top_p")
+        max_tokens = preset.get("max_tokens")
     else:
         provider = (model_cfg.get("provider") or "openai").lower()
         model_id = model_cfg.get("modelId") or ""
         api_key = model_cfg.get("apiKey") or ""
         base_url = model_cfg.get("baseUrl") or ""
+        # Inline fallback also picks up the same knobs from the node's
+        # own model config — same NULL semantics. Consistent with how
+        # `thinking` already behaves (caller-supplied default False).
+        temperature = model_cfg.get("temperature")
+        top_p = model_cfg.get("topP")
+        max_tokens = model_cfg.get("maxTokens")
 
     # No model id → caller's model config is incomplete. Platform doesn't
     # second-guess from `.env.llm` anymore — the user must set a preset.
@@ -255,6 +273,15 @@ def build_model(
             kw["base_url"] = base_url
         if thinking:
             kw["reasoning_effort"] = "medium"
+        # Sampling / length knobs — only added when the preset (or
+        # inline config) supplied a non-NULL value. agno's `OpenAIChat`
+        # accepts them directly and forwards to the API.
+        if temperature is not None:
+            kw["temperature"] = temperature
+        if top_p is not None:
+            kw["top_p"] = top_p
+        if max_tokens is not None:
+            kw["max_tokens"] = max_tokens
         if not kw.get("api_key"):
             return None
         return OpenAIChat(**kw)
@@ -272,6 +299,15 @@ def build_model(
             # surface as a build failure — callers translate it into
             # a single ErrorEvent via _build_agent_for_node's wrapping.
             kw["thinking"] = {"type": "enabled", "budget_tokens": 1024}
+        # Sampling / length knobs — Claude accepts the same names
+        # (temperature, top_p, max_tokens) and forwards them in the
+        # request body.
+        if temperature is not None:
+            kw["temperature"] = temperature
+        if top_p is not None:
+            kw["top_p"] = top_p
+        if max_tokens is not None:
+            kw["max_tokens"] = max_tokens
         if not kw.get("api_key"):
             return None
         return Claude(**kw)
@@ -279,7 +315,21 @@ def build_model(
     if provider == "ollama":
         from agno.models.ollama import Ollama
         # Ollama has no first-class thinking param; pass-through no-op.
-        return Ollama(id=model_id)
+        # Sampling knobs go into the `options` dict that agno's
+        # `get_request_params` forwards to /api/generate. `num_predict`
+        # is Ollama's name for `max_tokens` — the two mean the same
+        # thing (cap the generated tokens).
+        kw: dict = {"id": model_id}
+        options: dict = {}
+        if temperature is not None:
+            options["temperature"] = temperature
+        if top_p is not None:
+            options["top_p"] = top_p
+        if max_tokens is not None:
+            options["num_predict"] = max_tokens
+        if options:
+            kw["options"] = options
+        return Ollama(**kw)
 
     if provider == "google":
         from agno.models.google import Gemini
@@ -289,6 +339,14 @@ def build_model(
         if thinking:
             # Gemini 2.5+ only — older models ignore thinking_budget.
             kw["thinking_budget"] = 1024
+        # Sampling / length knobs — Gemini calls `max_tokens` by the
+        # name `max_output_tokens`; agno accepts the latter.
+        if temperature is not None:
+            kw["temperature"] = temperature
+        if top_p is not None:
+            kw["top_p"] = top_p
+        if max_tokens is not None:
+            kw["max_output_tokens"] = max_tokens
         return Gemini(**kw)
 
     return None

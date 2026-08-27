@@ -37,6 +37,13 @@ class LlmPresetCreate(BaseModel):
     # Default False — tests stay fast and the toggle is opt-in per
     # preset instead of a global preference.
     thinking: bool = Field(default=False, alias="thinking")
+    # Sampling / length knobs. NULL = "don't pass this kwarg to the
+    # model" (let the provider default kick in). Ranges match what
+    # OpenAI / Anthropic document; out-of-range values 422 at the API
+    # before they ever reach the DB.
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0, alias="topP")
+    max_tokens: Optional[int] = Field(default=None, ge=1, le=100000, alias="maxTokens")
 
 class LlmPresetUpdate(BaseModel):
     model_config = _CAMEL_INPUT
@@ -48,6 +55,13 @@ class LlmPresetUpdate(BaseModel):
     base_url: Optional[str] = Field(default=None, alias="baseUrl")
     is_default: Optional[bool] = Field(default=None, alias="isDefault")
     thinking: Optional[bool] = Field(default=None, alias="thinking")
+    # Sampling / length knobs — same semantics as `LlmPresetCreate`.
+    # `exclude_unset=True` in the service layer distinguishes "field
+    # absent from payload" (leave column alone) from "field present,
+    # value None" (clear it back to NULL).
+    temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
+    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0, alias="topP")
+    max_tokens: Optional[int] = Field(default=None, ge=1, le=100000, alias="maxTokens")
 
 class LlmPresetRead(BaseModel):
     # `populate_by_name=True` lets `from_orm_row` keep passing the
@@ -83,6 +97,13 @@ class LlmPresetRead(BaseModel):
     # so the user can flip it on a single preset without affecting any
     # other preset in the table.
     thinking: bool
+    # Sampling / length knobs. Same NULL = "model default" semantics as
+    # the create schema; the frontend renders them as empty inputs when
+    # the value is NULL so the user knows the model will fall back to
+    # its own default rather than seeing a stale `0`.
+    temperature: Optional[float] = Field(default=None)
+    topP: Optional[float] = Field(default=None, alias="top_p")
+    maxTokens: Optional[int] = Field(default=None, alias="max_tokens")
     # Per-user binding. NULL → system row (shared, read-only);
     # non-NULL → owning user's id (matches `users.id`, which for human
     # users is the email). The frontend can disable delete / edit
@@ -107,6 +128,9 @@ class LlmPresetRead(BaseModel):
             base_url=row.base_url,
             is_default=bool(row.is_default),
             thinking=bool(getattr(row, "thinking", False)),
+            temperature=getattr(row, "temperature", None),
+            top_p=getattr(row, "top_p", None),
+            max_tokens=getattr(row, "max_tokens", None),
             user_id=getattr(row, "user_id", None),
             createdAt=row.created_at,
             updatedAt=row.updated_at,

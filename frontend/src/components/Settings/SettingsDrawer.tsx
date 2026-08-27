@@ -237,6 +237,19 @@ function PresetForm({
   // (NOT a checkbox) per the designer's note " button
   // ".
   const [thinking, setThinkingState] = useState(initial?.thinking ?? false)
+  // Sampling / length knobs. Stored as strings so the input can show
+  // an empty box when the value is NULL ("use model default"). We
+  // convert to `number | null` at save time and only emit when dirty
+  // + non-empty, matching the apiKey "omit if untouched" pattern.
+  const [temperature, setTemperatureState] = useState(
+    initial?.temperature != null ? String(initial.temperature) : '',
+  )
+  const [topP, setTopPState] = useState(
+    initial?.topP != null ? String(initial.topP) : '',
+  )
+  const [maxTokens, setMaxTokensState] = useState(
+    initial?.maxTokens != null ? String(initial.maxTokens) : '',
+  )
   // P3 : track "is this preset the default one" so the form
   // header can show a `★ DEFAULT` badge. Mirrored from `initial` (the
   // prop the parent passed) and refreshed after the re-fetch below —
@@ -273,6 +286,9 @@ function PresetForm({
         setThinkingState(!!fresh.thinking)
         setIsDefaultState(!!fresh.isDefault)
         setApiKeyState('')  // never echo back the raw key
+        setTemperatureState(fresh.temperature != null ? String(fresh.temperature) : '')
+        setTopPState(fresh.topP != null ? String(fresh.topP) : '')
+        setMaxTokensState(fresh.maxTokens != null ? String(fresh.maxTokens) : '')
       })
       .catch(() => {
         // network failure → keep whatever `initial` had
@@ -293,6 +309,7 @@ function PresetForm({
     return {
       name: true, provider: true, modelId: true,
       apiKey: true, baseUrl: true, thinking: true,
+      temperature: true, topP: true, maxTokens: true,
     }
   })
   const mark = (k: string) => setDirty((d) => (d[k] ? d : { ...d, [k]: true }))
@@ -302,6 +319,9 @@ function PresetForm({
   const setApiKey = (v: string) => { setApiKeyState(v); mark('apiKey') }
   const setBaseUrl = (v: string) => { setBaseUrlState(v); mark('baseUrl') }
   const setThinking = (v: boolean) => { setThinkingState(v); mark('thinking') }
+  const setTemperature = (v: string) => { setTemperatureState(v); mark('temperature') }
+  const setTopP = (v: string) => { setTopPState(v); mark('topP') }
+  const setMaxTokens = (v: string) => { setMaxTokensState(v); mark('maxTokens') }
 
   // Creating a brand-new preset REQUIRES an apiKey — anything in the
   // list is assumed to be usable, and the runtime refuses to build a
@@ -428,6 +448,74 @@ function PresetForm({
               />
             </button>
           </div>
+
+          {/* Sampling / length knobs. Collapsed by default so the
+              simple cases (name/provider/modelId/apiKey/baseUrl/thinking)
+              stay at a glance. Mirrors the `<details>` pattern at
+              `PropertyPanel/AgentForm.tsx`'s "Advanced" panel. Empty
+              box = NULL = "use model default" — see the helper hint
+              in each field. Browser-native `min`/`max` gives the
+              user a tooltip on out-of-range values; the backend
+              re-validates with Pydantic and 422s anything that slips
+              past. */}
+          <details className="rounded border border-edge bg-surface-sunken/40">
+            <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-ink">
+              {t('settings.llm.fields.advancedLabel')}
+            </summary>
+            <div className="space-y-3 px-3 pb-3 pt-1">
+              <p className="text-[10px] text-ink-muted leading-snug">
+                {t('settings.llm.fields.advancedHint')}
+              </p>
+              <Field label={t('settings.llm.fields.temperature')}>
+                <input
+                  type="number"
+                  className="input"
+                  value={temperature}
+                  onChange={(e) => setTemperature(e.target.value)}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                  placeholder="0.7"
+                  data-testid="preset-temperature-input"
+                />
+                <p className="text-[10px] text-ink-muted leading-snug">
+                  {t('settings.llm.fields.temperatureHint')}
+                </p>
+              </Field>
+              <Field label={t('settings.llm.fields.topP')}>
+                <input
+                  type="number"
+                  className="input"
+                  value={topP}
+                  onChange={(e) => setTopP(e.target.value)}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  placeholder="0.95"
+                  data-testid="preset-topP-input"
+                />
+                <p className="text-[10px] text-ink-muted leading-snug">
+                  {t('settings.llm.fields.topPHint')}
+                </p>
+              </Field>
+              <Field label={t('settings.llm.fields.maxTokens')}>
+                <input
+                  type="number"
+                  className="input"
+                  value={maxTokens}
+                  onChange={(e) => setMaxTokens(e.target.value)}
+                  min={1}
+                  max={100000}
+                  step={1}
+                  placeholder="2048"
+                  data-testid="preset-maxTokens-input"
+                />
+                <p className="text-[10px] text-ink-muted leading-snug">
+                  {t('settings.llm.fields.maxTokensHint')}
+                </p>
+              </Field>
+            </div>
+          </details>
         </div>
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -457,6 +545,20 @@ function PresetForm({
                 if (dirty.modelId) body.modelId = modelId
                 if (dirty.baseUrl) body.baseUrl = baseUrl
                 if (dirty.thinking) body.thinking = thinking
+                // Sampling / length knobs. Empty string + dirty means
+                // "user cleared the box" — emit `null` to clear the
+                // column back to NULL. Non-empty string → number. Empty
+                // string + NOT dirty → don't touch the column (the user
+                // never edited it; let the existing value stand).
+                if (dirty.temperature) {
+                  body.temperature = temperature === '' ? null : Number(temperature)
+                }
+                if (dirty.topP) {
+                  body.topP = topP === '' ? null : Number(topP)
+                }
+                if (dirty.maxTokens) {
+                  body.maxTokens = maxTokens === '' ? null : Number(maxTokens)
+                }
                 if (dirty.apiKey) {
                   if (apiKey || !isEdit) {
                     body.apiKey = apiKey

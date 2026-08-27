@@ -309,7 +309,15 @@
         "apiKey": "API key",
         "baseUrl": "Base URL (optional)",
         "thinking": "Thinking mode",
-        "thinkingHint": "Send extended-thinking / reasoning kwargs to the model. Off by default — slow reasoning tasks only."
+        "thinkingHint": "Send extended-thinking / reasoning kwargs to the model. Off by default — slow reasoning tasks only.",
+        "advancedLabel": "Advanced sampling",
+        "advancedHint": "Per-call sampling / length overrides. Leave empty to use the model's own defaults.",
+        "temperature": "Temperature",
+        "temperatureHint": "0–2. Higher = more random. Most chat models sit around 0.7.",
+        "topP": "Top-p",
+        "topPHint": "0–1. Nucleus sampling cutoff. 0.9–0.95 is a safe range.",
+        "maxTokens": "Max tokens",
+        "maxTokensHint": "1–100000. Caps the model's reply length. Empty = model default."
       },
       "placeholders": {
         "name": "My Claude",

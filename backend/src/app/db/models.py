@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint, text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -122,6 +122,15 @@ class LlmPreset(Base):
     thinking: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
+    # Per-call sampling / length knobs. NULL = "use the model's own
+    # default" — `build_model` only forwards these to the agno Model
+    # constructor when the value is non-NULL. Range validators live on
+    # the Pydantic schemas (`LlmPresetCreate` / `LlmPresetUpdate`);
+    # the DB itself doesn't enforce ranges because the placeholder
+    # NULL already encodes "unset".
+    temperature: Mapped[float | None] = mapped_column(Float, nullable=True)
+    top_p: Mapped[float | None] = mapped_column(Float, nullable=True)
+    max_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Per-user binding : NULL = system row (shared,
     # read-only via the API), non-NULL = the `users.id` of the owning

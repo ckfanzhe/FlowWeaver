@@ -309,7 +309,15 @@
         "apiKey": "API 密钥",
         "baseUrl": "Base URL（可选）",
         "thinking": "思考模式",
-        "thinkingHint": "向模型发送扩展思考 / 推理参数。默认关闭 — 仅在需要推理能力的慢任务时启用。"
+        "thinkingHint": "向模型发送扩展思考 / 推理参数。默认关闭 — 仅在需要推理能力的慢任务时启用。",
+        "advancedLabel": "高级采样",
+        "advancedHint": "按次采样的参数覆盖。留空使用模型自身默认值。",
+        "temperature": "温度",
+        "temperatureHint": "0–2。越高越随机；常见聊天模型默认值约为 0.7。",
+        "topP": "Top-p",
+        "topPHint": "0–1。核采样阈值，0.9–0.95 通常较稳妥。",
+        "maxTokens": "最大输出 Tokens",
+        "maxTokensHint": "1–100000。限制模型单次回复的长度；留空 = 模型默认值。"
       },
       "placeholders": {
         "name": "我的 Claude",
