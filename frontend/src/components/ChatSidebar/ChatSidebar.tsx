@@ -979,7 +979,14 @@ function MessageBubbleForRole({
       <MessagePrimitive.Root>
         <ChatRoleContext.Provider value="user">
           <div className="flex justify-end mb-3">
-            <div className="max-w-[85%] min-w-0 rounded-lg bg-accent px-3 py-2 text-sm text-white shadow-sm break-words overflow-wrap-anywhere">
+            {/* User bubble: pale accent fill + accent-coloured text,
+                not the saturated `bg-accent` button-blue + `text-white`
+                pair. The previous combo read as a system button instead
+                of a chat bubble — iMessage / WeChat use a tinted
+                background and a coloured label so the bubble reads as
+                a chat surface, not a CTA. The assistant bubble stays
+                neutral (handled below) so the two sides stay distinct. */}
+            <div className="max-w-[85%] min-w-0 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-text shadow-sm break-words overflow-wrap-anywhere">
               <ChatMessageParts />
             </div>
           </div>
