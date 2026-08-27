@@ -2,24 +2,30 @@
  * Tiny typed fetch wrapper. Throws Error with the server's detail message on non-2xx.
  *
  * Auto-injects the `X-User-Id` header on every request from
- * `localStorage.agnobuilder.userId`. The multi-user backend reads
+ * `sessionStorage.agnobuilder.userId`. The multi-user backend reads
  * that header on every endpoint and uses it as the caller identity.
  *
- * `readUserId()` is a thin localStorage read; doing the lookup at
+ * `readUserId()` is a thin sessionStorage read; doing the lookup at
  * call time (rather than caching it once at module load) means the
- * "Switch user" affordance — which writes a new value to localStorage
- * — takes effect on the next request without needing a refresh.
+ * "Switch user" affordance — which clears the stored value — takes
+ * effect on the next request without needing a refresh.
+ *
+ * SessionStorage (not localStorage) — matches `identityStore.ts` and
+ * the per-tab identity contract introduced in
+ * . Two tabs of one browser hold
+ * independent identities; cross-tab clobbering of `lastWorkflowId`
+ * during autosave is gone.
  */
 
-// localStorage key the identityStore writes/reads. Kept here (not in
-// the store) so the API client has zero import-time coupling on the
-// React store — module-load order matters when one file imports the
-// other in dev.
+// sessionStorage key the identityStore writes/reads. Kept here (not
+// in the store) so the API client has zero import-time coupling on
+// the React store — module-load order matters when one file imports
+// the other in dev.
 export const USER_ID_STORAGE_KEY = 'agnobuilder.userId'
 
 function readUserId(): string | null {
   try {
-    const v = localStorage.getItem(USER_ID_STORAGE_KEY)
+    const v = sessionStorage.getItem(USER_ID_STORAGE_KEY)
     return v && v.trim() ? v.trim() : null
   } catch {
     return null
@@ -69,7 +75,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     'Content-Type': 'application/json',
     ...(init?.headers as Record<string, string> | undefined ?? {}),
   }
-  // Inject X-User-Id if we have one in localStorage. The backend's
+  // Inject X-User-Id if we have one in sessionStorage. The backend's
   // identity layer falls back to `user-default` when the header is
   // missing, so anonymous calls still work — but every workflow CRUD
   // should carry the header so RBAC scopes to the right user.
