@@ -235,6 +235,71 @@ def _mid_stream_friendly_message() -> str:
         "request to continue editing."
     )
 
+def _friendly_context_error(exc: Exception) -> str | None:
+    """Translate a provider context-length-exceeded error into a
+    user-friendly message naming the budget vs the actual cost.
+
+    Both Anthropic and OpenAI raise a `BadRequestError` (status 400)
+    whose message names the model's `max context length` plus the
+    tokens the request would consume. The raw text is technically
+    accurate but doesn't help the user understand *why* a small
+    user message is consuming 6K tokens — the answer is "system
+    prompt + conversation history dominates". We parse out the
+    three numbers and compose a hint that names the usual suspects
+    and the levers the user actually controls.
+
+    Returns None when the exception doesn't look like a context
+    error — the caller falls through to the generic handler.
+    """
+    import re
+    msg = str(exc)
+    # Anthropic / OpenAI / agno all funnel their BadRequest 400
+    # through this branch. The phrase "maximum context length" is
+    # stable across providers; match it as the discriminator.
+    if "maximum context length" not in msg and "context_length_exceeded" not in msg:
+        return None
+    # Anthropic style:
+    #   maximum context length is 8192 tokens ... requested 2048
+    #   output tokens ... at least 6145 input tokens, for a total
+    #   of at least 8193 tokens
+    model_max = re.search(r"maximum context length is (\d[\d,]*) tokens", msg)
+    input_used = re.search(r"(?:at least|resulted in)\s+(\d[\d,]*) (?:input )?tokens", msg)
+    requested_out = re.search(r"requested\s+(\d[\d,]*)\s+output tokens", msg)
+    def _n(m: re.Match | None) -> int | None:
+        return int(m.group(1).replace(",", "")) if m else None
+    model_max_n = _n(model_max)
+    input_used_n = _n(input_used)
+    requested_out_n = _n(requested_out)
+    head = "LLM 上下文不足："
+    if model_max_n and input_used_n is not None:
+        head += (
+            f"本模型上下文上限 {model_max_n:,} tokens，"
+            f"本次请求的输入约 {input_used_n:,} tokens"
+        )
+        if requested_out_n:
+            head += (
+                f"，加上请求的输出 {requested_out_n:,} tokens"
+                f"（合计 {input_used_n + requested_out_n:,}）"
+            )
+        head += "。\n"
+    else:
+        # Provider message in an unfamiliar shape — surface the raw
+        # detail so the user can still diagnose, prefixed with the
+        # same hint about the usual cause.
+        head += f"模型拒绝了本次请求（{msg.strip().splitlines()[0][:200]}）。\n"
+    # The actual cause is almost never the user's last message —
+    # it's the system prompt + the conversation history agno
+    # injects via `add_history_to_context=True,
+    # num_history_runs=<default 5>`. Name the levers the user owns.
+    return (
+        head
+        + "注意：系统提示词 + 历史对话 (Agent 节点的 numHistoryRuns，"
+        "默认 5) 通常占输入大头。请尝试：\n"
+        "  1. 在 Agent 节点把 numHistoryRuns 从默认 5 降到 2-3\n"
+        "  2. 在 LLM 预设里把 max_tokens 调小（如 512-1024）\n"
+        "  3. 换一个 context window 更大的模型（如 claude-sonnet-4-5，200K）"
+    )
+
 # ─────────────────────────────────────────────────────────────────
 # Session state
 # ─────────────────────────────────────────────────────────────────
@@ -2594,7 +2659,16 @@ def run_chat_turn(
             yield BuilderErrorEvent(message=_mid_stream_friendly_message())
             return
     except Exception as exc:
-        yield BuilderErrorEvent(message=f"LLM call failed: {exc}")
+        # Context-length-exceeded errors come back as a 400 with a
+        # wall of numbers; the raw text is accurate but doesn't
+        # name the cause (system prompt + num_history_runs history
+        # usually dominates). Translate to a friendly form when we
+        # recognise the shape; otherwise fall through to the
+        # generic message so unusual failures still surface.
+        friendly = _friendly_context_error(exc)
+        yield BuilderErrorEvent(
+            message=friendly if friendly else f"LLM call failed: {exc}"
+        )
         return
 
     # Two paths:

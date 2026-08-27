@@ -506,6 +506,34 @@ def test_export_blocked_for_non_member(client):
     )
     assert r.status_code == 403
 
+def test_export_returns_503_with_friendly_message_when_template_missing(
+    client, monkeypatch
+):
+    """Jinja header template is missing (e.g. stale Docker image that
+    pre-dates the `COPY backend/templates` line) — the route must
+    surface a CORS-friendly 503 with a hint, instead of a generic
+    500 whose body lacks `Access-Control-Allow-Origin` and gets
+    hidden behind the browser's CORS error."""
+    from app.services import workflow_service as ws
+    wf_id = _create(client, user="alice")
+    # Monkeypatch the service entrypoint to raise the same Jinja
+    # would. `FileNotFoundError` is what jinja2's loaders raise for
+    # `TemplateNotFound`, so the route's existing except clause picks
+    # it up without any extra plumbing.
+    def _raise(*args, **kwargs):
+        raise FileNotFoundError(
+            "workflow.py.jinja not found in /app/templates"
+        )
+    monkeypatch.setattr(ws, "export_python", _raise)
+    r = client.get(
+        f"/api/v1/workflows/{wf_id}/export",
+        headers={"X-User-Id": "alice"},
+    )
+    assert r.status_code == 503, r.text
+    body = r.json()
+    assert "workflow.py.jinja" in body["detail"]
+    assert "docker compose up --build backend" in body["detail"]
+
 def test_export_allowed_for_viewer(client):
     wf_id = _create(
         client, user="alice",

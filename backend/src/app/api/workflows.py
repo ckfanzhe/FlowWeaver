@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -138,7 +138,25 @@ def export_workflow(
     user: CurrentUser = Depends(current_user),
 ):
     """Render the workflow as standalone Python source and return it as a download."""
-    source, filename = workflow_service.export_python(db, workflow_id, user=user)
+    try:
+        source, filename = workflow_service.export_python(db, workflow_id, user=user)
+    except FileNotFoundError as exc:
+        # Jinja header template (`backend/templates/workflow.py.jinja`)
+        # is missing — almost always a stale Docker image that pre-dates
+        # the `COPY backend/templates` line. Without the explicit
+        # HTTPException, FastAPI's default 500 handler skips CORS
+        # headers and the browser only sees "blocked by CORS", hiding
+        # the real cause. Raise a proper 503 so the frontend surfaces
+        # the message verbatim.
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            (
+                "Workflow export is temporarily unavailable — the server "
+                "image is missing the Jinja template (workflow.py.jinja). "
+                "Rebuild the backend image (`docker compose up --build backend`) "
+                "and retry."
+            ),
+        ) from exc
     return Response(
         content=source,
         media_type="text/x-python",

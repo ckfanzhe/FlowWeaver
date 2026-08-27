@@ -47,6 +47,16 @@ RUN uv sync --frozen --no-dev
 # resolver's expectation once it walks up the path tree.
 # ─────────────────────────────────────────────────────────────────
 COPY backend/src ./src
+# `backend/templates/` carries the Jinja headers (`workflow.py.jinja`)
+# that `app.core.compile.serialize._env()` resolves via
+# `Path(__file__).resolve().parents[4] / "templates"` → `/app/templates`.
+# Without this COPY the runtime raises `TemplateNotFound` whenever a
+# user tries to export a workflow as Python (see GitHub issue log
+# "export_workflow 500 — workflow.py.jinja not found"). `../shared`
+# is sibling to `backend/templates/` in the repo layout, but the
+# source-emit code only reads templates so we COPY it explicitly
+# rather than relying on a wildcard.
+COPY backend/templates ./templates
 COPY shared ../shared
 
 # `uvicorn` lives in the venv uv created at /app/.venv. Putting it on
